@@ -6,6 +6,9 @@ from datetime import datetime
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_channel_id = 988549339808952371
+data_dict = {'Name': 'N/A', 'Details': 'N/A', 'Code': 'N/A', 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A', 'Have': 'N/A', 'Icon': '\U00002754'}
+# Codes stored for diff feature.
+active_codes = []
 
 if os.path.isfile(token_file):
     with open(token_file, 'r') as file: TOKEN = file.readline()
@@ -45,13 +48,15 @@ def liquor_scraper(site_url):
     except: return False
     else: return BeautifulSoup(site_request.text, 'html.parser')
 
-
 def get_product_data(product_code=None):
+    """Fetches and parses product data."""
+
     if not product_code: return False
 
     # E.g. [{'Name': 'M & R Sweet Vermouth', 'Details': 'BACARDI USA INC, IMPORTED VERMOUTH, ITALIAN VERMOUTH ',
     #       'Pack': 6, 'Inventory': 8, 'Ordered': 12}
-    return_data = {'Name': product_code, 'Details': 'N/A', 'Code': product_code, 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A'}
+    return_data = data_dict.copy()
+    return_data.update({'Name': product_code,'Code': product_code})
 
     # Product details page, Name, bottles perpack, etc.
     product_details_url = f'https://ice.liquor.nh.gov/public/default.asp?Category=inquiries&Service=brandinfopost&req={product_code}'
@@ -78,15 +83,25 @@ def get_product_data(product_code=None):
                         return_data['Inventory'] = td_data[1].text.strip()
                         return_data['Ordered'] = td_data[2].text.strip()
 
+    # Checks if have on-hand bottles
+    try:
+        if int(return_data['Inventory']) / int(return_data['Pack']) >= 1: return_data['Icon'] = '\U00002705'
+        else: return_data['Icon'] = '\U0000274C'
+    except: pass
+
     return return_data
 
 
 # ========== Commands
 @bot.command(aliases=['check'])
-async def get(ctx, *product_code):
+async def getitem(ctx, *product_code):
     """Gets product data by store code(s)."""
 
+    global active_codes
+
     product_data = []
+    if 'codes' in product_code:
+        product_code = active_codes.copy()
 
     await ctx.send(f"***Checking Inventory...***")
 
@@ -97,24 +112,102 @@ async def get(ctx, *product_code):
             product_codes = [int(i) for i in product_code]
             # If product_codes list comprehension successful, gets product data with each code.
             for i in product_codes:
-                data_dict = {'Name': i, 'Details': 'N/A', 'Code': i, 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A'}
+                data = data_dict.copy()
                 try: product_data.append(get_product_data(i))
-                except: product_data.append(data_dict)
-
+                except:
+                    data.update({'Name': i, 'Code': i, 'Icon': '\U0001F6AB'})
+                    product_data.append(data)
         except: product_data = None
 
     if not product_data:
-        await ctx.send("Error")
+        await ctx.send("Error checking codes.")
         return False
 
     # TODO Add feature showing what code has error (like a letter instead of number)
 
     embed = discord.Embed(title='Inventory')
     for i in product_data:
-        embed.add_field(name=i['Name'], value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`", inline=False)
-
+        embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`", inline=False)
     await ctx.send(embed=embed)
-    lprint(f"Fetched Product: {' ' .join(product_code)}")
+    lprint(f"Fetched Product: {product_code}")
+
+@bot.command(aliases=['d'])
+async def diff(ctx, *product_code):
+    """Checks if codes are in active_codes."""
+
+    for i in product_code:
+        if i in active_codes:
+            await ctx.send(f"Match: {i}")
+
+@bot.command(aliases=['addcode', 'add', 'a'])
+async def codeadd(ctx, *product_code):
+    """Add codes to active_codes."""
+    global active_codes
+
+    try:
+        # Add code if not already added
+        for i in product_code:
+            if i not in active_codes:
+                active_codes.append(str(int(i)))
+    except:
+        await ctx.send("Not all were numbers.")
+        return
+    await ctx.send("**Added codes**")
+    await ctx.invoke(bot.get_command("codeget"))
+    lprint(f"Code added: {product_code}")
+
+@bot.command(aliases=['remove', 'r'])
+async def coderemove(ctx, *product_code):
+    """Removes active codes."""
+
+    global active_codes
+    new_codes = []
+    for i in active_codes:
+        if i in product_code: continue
+        new_codes.append(i)
+    active_codes = new_codes.copy()
+    await ctx.send(f"Removed codes: {str(*product_code)}")
+    lprint(f'Removed codes: {product_code}')
+
+@bot.command(aliases=['cc', 'clear'])
+async def codeclear(ctx):
+    global active_codes
+    active_codes.clear()
+    await ctx.send("Cleared active codes")
+    lprint('Cleared codes')
+
+@bot.command(aliases=['c', 'codes'])
+async def codeget(ctx):
+    """Fetches current active codes."""
+
+    global active_codes
+
+    if not active_codes:
+        await ctx.send("No active codes.")
+        return
+
+    text = ''
+    counter = 0
+    for i in active_codes:
+        text += str(i) + '\n'
+        counter += 1
+        if counter == 5:
+            text += '-----\n'
+            counter = 0
+
+    await ctx.send(f"**Active Codes:**\n{text}----------")
+    lprint('Fetched codes')
+
+@bot.command(aliases=['?'])
+async def shortcuts(ctx):
+
+    await ctx.send("""```
+c, codes    - Show current active codes
+a, add      - Add active codes, a 7221 6660 982
+r, remove   - Remove active codes, r 6660
+d, diff     - Check if code in active codes, d 7221 982
+check       - Check inventory, check 7221 6660, check c
+```""")
 
 
 # ===== Msc
