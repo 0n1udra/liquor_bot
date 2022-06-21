@@ -93,8 +93,8 @@ def get_product_data(product_code=None):
 
 
 # ========== Commands
-@bot.command(aliases=['check'])
-async def getitem(ctx, *product_code):
+@bot.command(aliases=['i', 'inv', 'check'])
+async def inventorycheck(ctx, *product_code):
     """Gets product data by store code(s)."""
 
     global active_codes
@@ -206,7 +206,7 @@ c, codes    - Show current active codes
 a, add      - Add active codes, a 7221 6660 982
 r, remove   - Remove active codes, r 6660
 d, diff     - Check if code in active codes, d 7221 982
-check       - Check inventory, check 7221 6660, check c
+i, inv      - Check inventory, i 7221 6660, i codes
 ```""")
 
 
