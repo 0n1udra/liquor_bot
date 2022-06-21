@@ -8,7 +8,7 @@ bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_channel_id = 988549339808952371
 data_dict = {'Name': 'N/A', 'Details': 'N/A', 'Code': 'N/A', 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A', 'Have': 'N/A', 'Icon': '\U00002754'}
 # Codes stored for diff feature.
-active_codes = []
+active_codes = {'testUser': ['12']}
 
 if os.path.isfile(token_file):
     with open(token_file, 'r') as file: TOKEN = file.readline()
@@ -101,7 +101,7 @@ async def inventorycheck(ctx, *product_code):
 
     product_data = []
     if 'codes' in product_code:
-        product_code = active_codes.copy()
+        product_code = active_codes[ctx.message.author.name].copy()
 
     await ctx.send(f"***Checking Inventory...***")
 
@@ -144,11 +144,15 @@ async def codeadd(ctx, *product_code):
     """Add codes to active_codes."""
     global active_codes
 
+    # So each user can have their own set of codes.
+    if ctx.message.author.name not in active_codes:
+        active_codes[ctx.message.author.name] = []
+
     try:
         # Add code if not already added
         for i in product_code:
-            if i not in active_codes:
-                active_codes.append(str(int(i)))
+            if i not in active_codes[ctx.message.author.name]:
+                active_codes[ctx.message.author.name].append(str(int(i)))
     except:
         await ctx.send("Not all were numbers.")
         return
@@ -161,18 +165,20 @@ async def coderemove(ctx, *product_code):
     """Removes active codes."""
 
     global active_codes
+
     new_codes = []
-    for i in active_codes:
+    for i in active_codes[ctx.message.author.name]:
         if i in product_code: continue
         new_codes.append(i)
-    active_codes = new_codes.copy()
+    active_codes[ctx.message.author.name] = new_codes.copy()
     await ctx.send(f"Removed codes: {str(*product_code)}")
     lprint(f'Removed codes: {product_code}')
 
 @bot.command(aliases=['cc', 'clear'])
 async def codeclear(ctx):
     global active_codes
-    active_codes.clear()
+
+    active_codes[ctx.message.author.name].clear()
     await ctx.send("Cleared active codes")
     lprint('Cleared codes')
 
@@ -182,13 +188,13 @@ async def codeget(ctx):
 
     global active_codes
 
-    if not active_codes:
+    if not active_codes[ctx.message.author.name]:
         await ctx.send("No active codes.")
         return
 
     text = ''
     counter = 0
-    for i in active_codes:
+    for i in active_codes[ctx.message.author.name]:
         text += str(i) + '\n'
         counter += 1
         if counter == 5:
