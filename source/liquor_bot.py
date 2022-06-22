@@ -2,39 +2,29 @@ import image_rescale, datetime, requests, discord, random, sys, os
 from discord_components import DiscordComponents, Button, ButtonStyle,  Select, SelectOption, ComponentsBot
 from bs4 import BeautifulSoup
 
-__version__ = "1a"
+__version__ = "1.1a"
 __date__ = '2022/04/12'
 __author__ = "DT"
 __email__ = "dt01@pm.me"
 __license__ = "GPL 3"
 __status__ = "Development"
 
-token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
+# ========== Variable & Funcs
 bot_path = os.path.dirname(os.path.abspath(__file__))
-bot_log_file = os.path.dirname(os.path.abspath(__file__)) + '/liquor_log.txt'
-ctx = "liquor_bot.py"  # For logging
+bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
+token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 bot_channel_id = 988549339808952371
-data_dict = {'Name': 'N/A', 'Details': 'N/A', 'Code': 'N/A', 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A', 'Have': 'N/A', 'Icon': '\U00002754'}
-# Codes stored for diff feature.
-active_codes = {'testUser': ['12']}
+ctx = "liquor_bot.py"  # For logging
 
-if os.path.isfile(token_file):
-    with open(token_file, 'r') as file: TOKEN = file.readline()
-else:
-    print("Missing Token File:", token_file)
-    sys.exit()
-
-# ========== Misc
-def check_active(context):
-    """Checks if user has a list in active_codes."""
-    try:
-        _ = active_codes[context.message.author.name]
-        return True
-    except: return False
+data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered', 'Have']
+data_dict = {k:'N/A' for k in data_points}
+data_dict.update({'Icon':'\U00002754'})
+active_codes = {'testUser': ['12']}  # Each user gets own list of active codes
 
 def lprint(ctx, msg):
     """Prints and Logs events in file."""
+
     try: user = ctx.message.author
     except: user = ctx
 
@@ -45,8 +35,24 @@ def lprint(ctx, msg):
     with open(bot_log_file, 'a') as file:
         file.write(output + '\n')
 
+def check_active(context):
+    """Checks if user has a list in active_codes."""
+
+    try:
+        _ = active_codes[context.message.author.name]
+        return True
+    except: return False
+
+def remove_dupes(input_list): return list(set(input_list))
+
+def format(codes): return ', '.join(codes)
 
 # ========== Discord Setup
+if os.path.isfile(token_file):
+    with open(token_file, 'r') as file: TOKEN = file.readline()
+else:
+    print("Missing Token File:", token_file)
+    sys.exit()
 bot = ComponentsBot(command_prefix='')
 
 @bot.event
@@ -133,7 +139,7 @@ def get_product_data(product_code=None):
     for i in product_codes:
         liquor_data.append(liquor_parser(i))
 
-    lprint(ctx, f"Fetched product data: {product_code}")
+    lprint(ctx, f"Fetched product data: {format(product_code)}")
     return liquor_data
 
 
@@ -149,10 +155,10 @@ async def new(ctx, *args):
 async def inventorycheck(ctx, *product_code):
     """Gets product data by store code(s)."""
 
+    #product_code = list(set(product_code))
     # Lets user use codes from active_codes.
     start_range, end_range = 0, None
     if 'codes' in product_code or 'c' in product_code:
-
         # Checks if user has a list in active_codes
         if not check_active(ctx):
             await ctx.send("No active codes")
@@ -181,7 +187,7 @@ async def inventorycheck(ctx, *product_code):
     for i in product_data:
         embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`", inline=False)
     await ctx.send(embed=embed)
-    lprint(ctx, f"Inventory Check: {product_code}")
+    lprint(ctx, f"Inventory Check: {format(product_code)}")
 
 @bot.command(aliases=['Codediff', 'dif', 'Diff', 'd', 'D'])
 async def codediff(ctx, *product_code):
@@ -194,6 +200,8 @@ async def codediff(ctx, *product_code):
 @bot.command(aliases=['Add', 'add', 'addcode', 'Addcode', 'a', 'A'])
 async def codeadd(ctx, *product_code):
     """Add codes to active_codes."""
+
+    product_code = remove_dupes(product_code)
     global active_codes
 
     # So each user can have their own set of codes.
@@ -213,7 +221,7 @@ async def codeadd(ctx, *product_code):
 
     await ctx.send("**Added codes**")
     await ctx.invoke(bot.get_command("codeget"))
-    lprint(ctx, f"Code added: {product_code}")
+    lprint(ctx, f"Code added: {format(product_code)}")
 
 @bot.command(aliases=['remove', 'Remove', 'r', 'R'])
 async def coderemove(ctx, *product_code):
@@ -235,7 +243,7 @@ async def coderemove(ctx, *product_code):
     active_codes[ctx.message.author.name] = new_codes.copy()
 
     await ctx.send(f"Removed codes: {', '.join(removed_codes)}")
-    lprint(ctx, f'Removed codes: {product_code}')
+    lprint(ctx, f'Removed codes: {format(product_code)}')
 
 @bot.command(aliases=['Clear', 'clear', 'cc', 'Cc', 'CC'])
 async def codeclear(ctx, *args):
@@ -276,7 +284,7 @@ async def codeget(ctx, group=''):
 
     await ctx.send(f"**Active Codes:**\n{text}")
     await ctx.send("----------END----------")
-    lprint(ctx, 'Fetched codes')
+    lprint(ctx, 'Fetched active codes')
 
 # ===== Photo
 @bot.command(aliases=['box', 'Box', 'Boxphoto', 'Boxpicture', 'b', 'B', 'photo', 'Photo', 'picture', 'Picture''p', 'P'])
@@ -319,7 +327,7 @@ async def boxphoto(ctx, *product_code):
             embed.set_image(url=f"attachment://{i['Code']}.jpg")
             await ctx.send(file=file, embed=embed)
 
-    lprint(ctx, f'Fetched photo for: {product_code}')
+    lprint(ctx, f'Fetched inventory+photo: {format(product_code)}')
 
 @bot.command(aliases=['Boxphotoonly', 'photoonly', 'Photoonly', 'bp', 'Bp'])
 async def boxphotoonly(ctx, product_code):
@@ -393,6 +401,14 @@ async def restartbot(ctx, now=''):
     os.chdir('/')
     os.chdir(bot_path)
     os.execl(sys.executable, sys.executable, *sys.argv)
+
+@bot.command(aliases=['quitrbot', '?stop'])
+async def stopbot(ctx, now=''):
+    """Restart this bot."""
+
+    await ctx.send(":octagonal_sign: ** Bot Deactivated.**")
+    lprint(ctx, "Quitting bot")
+    sys.exit()
 
 @bot.command(aliases=['updatebot', 'botupdate', 'git', 'update'])
 async def gitupdate(ctx):
