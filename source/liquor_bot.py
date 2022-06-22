@@ -242,7 +242,7 @@ async def codeget(ctx, group=''):
     lprint('Fetched codes')
 
 # ===== Photo
-@bot.command(aliases=['box', 'Box', 'Boxphoto', 'Boxpicture', 'b', 'B', 'picture', 'Picture''p', 'P'])
+@bot.command(aliases=['box', 'Box', 'Boxphoto', 'Boxpicture', 'b', 'B', 'photo', 'Photo', 'picture', 'Picture''p', 'P'])
 async def boxphoto(ctx, *product_code):
     """Gets photo of liquor box from code."""
 
@@ -280,7 +280,7 @@ async def boxphoto(ctx, *product_code):
 
     lprint(f'Fetched photo for: {product_code}')
 
-@bot.command(aliases=['Boxphotoonly', 'Boxphoto', 'bp', 'Bp'])
+@bot.command(aliases=['Boxphotoonly', 'photoonly', 'Photoonly', 'bp', 'Bp'])
 async def boxphotoonly(ctx, product_code):
     """Fetches image of box from product_code if exists."""
 
