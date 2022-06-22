@@ -46,7 +46,8 @@ async def on_button_click(interaction):
 
 # ========== Web Scraper
 def get_soup(site_url):
-    # Requests sandown.us/minutes-and-agenda with random user agent.
+    """Gets soup from request.text."""
+
     user_agents = ["Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0",
                    "Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0",
                    "Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0"]
@@ -58,6 +59,8 @@ def get_soup(site_url):
 
 
 def text_parser(text, index, split_str=None, slice=2):
+    """Parses text from details page of product."""
+
     # E.g. 'Class: 898  IMPORTED VERMOUTH                        Status: A 070104' > 'Imported    return_data.update({'Name': product_code,'Code': product_code, 'Icon': '\U0001F6AB'}) vermouth'
     return ' '.join(text[index].split(split_str)[0].split()[slice:])
 
@@ -124,7 +127,7 @@ async def inventorycheck(ctx, *product_code):
     if 'codes' in product_code or 'c' in product_code:
         # Optionally specify code group, use codeget() to see groups.
         if len(product_code) == 2:
-            try:
+            try:  # List slicing indexes for specified group.
                 start_range = int(product_code[-1]) * 5 - 5
                 end_range = start_range + 5
             except:
@@ -224,16 +227,14 @@ async def codeget(ctx, group=''):
         end_range = start_range + 5
     except: pass
 
-    text = ''
-    counter = 0
+    # Prints out all active_codes in groups of 5 or just a specific group.
+    text, counter = '', 0
     for i in active_codes[ctx.message.author.name][start_range:end_range]:
         if group and counter % 5 == 0: text += f"**Group {group}** -----\n"
-        # Display codes in groups of 5
         elif counter == 0: text += '**Group 1** ----------\n'
         elif counter % 5 == 0 and counter > 1:
             text += f'**{(counter / 5) + 1:.0f}** ----------\n'
         counter += 1
-
         text += f'{i}\n'
 
     await ctx.send(f"**Active Codes:**\n{text}")
@@ -266,6 +267,7 @@ async def boxphoto(ctx, *product_code):
         return False
 
     for i in product_data:
+        # Embed changes depending on if file found.
         embed = discord.Embed(title='Inventory')
         try: file = discord.File(f"{box_photos_path}/{i['Code']}.jpg", filename=f"{i['Code']}.jpg")
         except:
@@ -280,34 +282,43 @@ async def boxphoto(ctx, *product_code):
 
 @bot.command(aliases=['bi', 'Bi', 'Boximage', 'Image', 'image'])
 async def boxupimageonly(ctx, product_code):
-    try:
-        file = discord.File(f"{box_photos_path}/{product_code}.jpg", filename=f"{product_code}.jpg")
+    """Fetches image of box from product_code if exists."""
+
+    try: file = discord.File(f"{box_photos_path}/{product_code}.jpg", filename=f"{product_code}.jpg")
     except:
         await ctx.send("Not Image Found")
         return
-    else:  # If found photo
+    else:
         await ctx.send(f'Image for: {product_code}', file=file)
         lprint(f"Fetched image: {product_code}")
 
 @bot.command(aliases=['bu', 'Bu', 'Boxupload', 'u', 'U', 'upload', 'Upload'])
 async def boxupload(ctx, product_code):
+    """Upload new photo of box and set filename."""
+
     try: product_code = str(int(product_code))
     except:
         await ctx.send("Please try again with corresponding product code")
         return
 
+    # Saves with code as filename. e.g. 7221.jpg
     for attachment in ctx.message.attachments:
         await attachment.save(f'{box_photos_path}/{product_code}.jpg')
 
     await ctx.send(f"Received new box photo for: {product_code}")
+
+    # Rescales photo by 50%.
     image_rescale.rescale(f"{box_photos_path}/{product_code}.jpg", 50)
+
     await ctx.invoke(bot.get_command("boxphoto"), product_code)
     lprint(f"New box photo: {box_photos_path}/{product_code}.jpg")
 
 @bot.command(aliases=['br', 'Br', 'Boxrename', 'rename', 're', 'Re', 'Rename'])
 async def boximagerename(ctx, product_code, new_code):
-    try:
-        os.rename(f"{box_photos_path}/{product_code}.jpg", f"{box_photos_path}/{new_code}.jpg")
+    """Rename photo."""
+
+    # E.g. rename 7222 7221
+    try: os.rename(f"{box_photos_path}/{product_code}.jpg", f"{box_photos_path}/{new_code}.jpg")
     except:
         await ctx.send("Error renaming image.")
         return
@@ -316,6 +327,7 @@ async def boximagerename(ctx, product_code, new_code):
 
 @bot.command(aliases=['?'])
 async def shortcuts(ctx):
+    """Custom help page."""
 
     await ctx.send("""```
 Command     - Description, example
