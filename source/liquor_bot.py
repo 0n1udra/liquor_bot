@@ -3,6 +3,13 @@ from discord_components import DiscordComponents, Button, ButtonStyle,  Select, 
 from bs4 import BeautifulSoup
 from datetime import datetime
 
+__version__ = "1a"
+__date__ = '2022/04/12'
+__author__ = "DT"
+__email__ = "dt01@pm.me"
+__license__ = "GPL 3"
+__status__ = "Development"
+
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_channel_id = 988549339808952371
@@ -26,7 +33,7 @@ async def on_ready():
     lprint("Bot Connected")
     await bot.wait_until_ready()
     bot_channel = bot.get_channel(bot_channel_id)
-    await bot_channel.send('**Bot PRIMED** :white_check_mark:')
+    await bot_channel.send(f':white_check_mark: **Bot PRIMED** {datetime.now().strftime("%X")}')
 
 @bot.event
 async def on_button_click(interaction):
@@ -93,13 +100,15 @@ def get_product_data(product_code=None):
 
 
 # ========== Commands
-@bot.command(aliases=['i', 'inv', 'check'])
+@bot.command(aliases=['i', 'I', 'inv', 'Inv', 'Check', 'check'])
 async def inventorycheck(ctx, *product_code):
     """Gets product data by store code(s)."""
 
     global active_codes
 
     product_data = []
+
+    # Lets user use codes from active_codes.
     if 'codes' in product_code:
         product_code = active_codes[ctx.message.author.name].copy()
 
@@ -115,6 +124,7 @@ async def inventorycheck(ctx, *product_code):
                 data = data_dict.copy()
                 try: product_data.append(get_product_data(i))
                 except:
+                    # If code has no matching product.
                     data.update({'Name': i, 'Code': i, 'Icon': '\U0001F6AB'})
                     product_data.append(data)
         except: product_data = None
@@ -131,15 +141,15 @@ async def inventorycheck(ctx, *product_code):
     await ctx.send(embed=embed)
     lprint(f"Fetched Product: {product_code}")
 
-@bot.command(aliases=['d'])
-async def diff(ctx, *product_code):
+@bot.command(aliases=['d', 'D', 'dif', 'Diff'])
+async def codediff(ctx, *product_code):
     """Checks if codes are in active_codes."""
 
     for i in product_code:
-        if i in active_codes:
+        if i in active_codes[ctx.message.author.name]:
             await ctx.send(f"Match: {i}")
 
-@bot.command(aliases=['addcode', 'add', 'a'])
+@bot.command(aliases=['addcode', 'add', 'a', 'Add', 'A'])
 async def codeadd(ctx, *product_code):
     """Add codes to active_codes."""
     global active_codes
@@ -149,18 +159,21 @@ async def codeadd(ctx, *product_code):
         active_codes[ctx.message.author.name] = []
 
     try:
-        # Add code if not already added
+        new_codes = []
         for i in product_code:
+            # Makes sure no duplicate codes.
             if i not in active_codes[ctx.message.author.name]:
-                active_codes[ctx.message.author.name].append(str(int(i)))
+                new_codes.append(str(int(i)))
+        active_codes[ctx.message.author.name].extend(new_codes)
     except:
         await ctx.send("Not all were numbers.")
         return
+
     await ctx.send("**Added codes**")
     await ctx.invoke(bot.get_command("codeget"))
     lprint(f"Code added: {product_code}")
 
-@bot.command(aliases=['remove', 'r'])
+@bot.command(aliases=['Delete', 'delete', 'remove', 'r', 'R', 'Remove'])
 async def coderemove(ctx, *product_code):
     """Removes active codes."""
 
@@ -168,22 +181,25 @@ async def coderemove(ctx, *product_code):
 
     new_codes = []
     for i in active_codes[ctx.message.author.name]:
+        # Skips adding code to active_codes if match.
         if i in product_code: continue
         new_codes.append(i)
     active_codes[ctx.message.author.name] = new_codes.copy()
     await ctx.send(f"Removed codes: {str(*product_code)}")
     lprint(f'Removed codes: {product_code}')
 
-@bot.command(aliases=['cc', 'clear'])
+@bot.command(aliases=['cc', 'clear', 'Cc', 'CC', 'Clear'])
 async def codeclear(ctx):
+    """Clears active_codes."""
+
     global active_codes
 
     active_codes[ctx.message.author.name].clear()
     await ctx.send("Cleared active codes")
     lprint('Cleared codes')
 
-@bot.command(aliases=['c', 'codes'])
-async def codeget(ctx):
+@bot.command(aliases=['c', 'codes', 'C', 'Code', 'Codes'])
+async def codeget(ctx, group=''):
     """Fetches current active codes."""
 
     global active_codes
@@ -192,16 +208,27 @@ async def codeget(ctx):
         await ctx.send("No active codes.")
         return
 
+    # Get specified number group
+    start_range, end_range = 0, None
+    try:
+        start_range = int(group) * 5 - 5
+        end_range = start_range + 5
+    except: pass
+
     text = ''
     counter = 0
-    for i in active_codes[ctx.message.author.name]:
-        text += str(i) + '\n'
+    for i in active_codes[ctx.message.author.name][start_range:end_range]:
+        if group and counter % 5 == 0: text += f"**Group {group}** -----\n"
+        # Display codes in groups of 5
+        elif counter == 0: text += '**Group 1** ----------\n'
+        elif counter % 5 == 0 and counter > 1:
+            text += f'**{(counter / 5) + 1:.0f}** ----------\n'
         counter += 1
-        if counter == 5:
-            text += '-----\n'
-            counter = 0
 
-    await ctx.send(f"**Active Codes:**\n{text}----------")
+        text += f'{i}\n'
+
+    await ctx.send(f"**Active Codes:**\n{text}")
+    await ctx.send("----------END----------")
     lprint('Fetched codes')
 
 @bot.command(aliases=['?'])
