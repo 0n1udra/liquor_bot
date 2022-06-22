@@ -1,7 +1,6 @@
-import image_rescale, requests, discord, random, sys, os
+import image_rescale, datetime, requests, discord, random, sys, os
 from discord_components import DiscordComponents, Button, ButtonStyle,  Select, SelectOption, ComponentsBot
 from bs4 import BeautifulSoup
-from datetime import datetime
 
 __version__ = "1a"
 __date__ = '2022/04/12'
@@ -12,6 +11,8 @@ __status__ = "Development"
 
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 bot_path = os.path.dirname(os.path.abspath(__file__))
+bot_log_file = os.path.dirname(os.path.abspath(__file__)) + '/liquor_log.txt'
+ctx = "liquor_bot.py"  # For logging
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 bot_channel_id = 988549339808952371
 data_dict = {'Name': 'N/A', 'Details': 'N/A', 'Code': 'N/A', 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A', 'Have': 'N/A', 'Icon': '\U00002754'}
@@ -24,17 +25,36 @@ else:
     print("Missing Token File:", token_file)
     sys.exit()
 
-def lprint(msg): print(f'{datetime.today()} | {msg}')
+# ========== Misc
+def check_active(context):
+    """Checks if user has a list in active_codes."""
+    try:
+        _ = active_codes[context.message.author.name]
+        return True
+    except: return False
 
+def lprint(ctx, msg):
+    """Prints and Logs events in file."""
+    try: user = ctx.message.author
+    except: user = ctx
+
+    output = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ({user}): {msg}"
+    print(output)
+
+    # Logs output.
+    with open(bot_log_file, 'a') as file:
+        file.write(output + '\n')
+
+
+# ========== Discord Setup
 bot = ComponentsBot(command_prefix='')
 
-# ========== Discord
 @bot.event
 async def on_ready():
-    lprint("Bot Connected")
+    lprint(ctx, "Bot Connected")
     await bot.wait_until_ready()
     bot_channel = bot.get_channel(bot_channel_id)
-    await bot_channel.send(f':white_check_mark: **Bot PRIMED** {datetime.now().strftime("%X")}')
+    await bot_channel.send(f':white_check_mark: **Bot PRIMED** {datetime.datetime.now().strftime("%X")}')
 
 @bot.event
 async def on_button_click(interaction):
@@ -113,16 +133,9 @@ def get_product_data(product_code=None):
     for i in product_codes:
         liquor_data.append(liquor_parser(i))
 
+    lprint(ctx, f"Fetched product data: {product_code}")
     return liquor_data
 
-
-# ========== Misc
-def check_active(context):
-    """Checks if user has a list in active_codes."""
-    try:
-        _ = active_codes[context.message.author.name]
-        return True
-    except: return False
 
 # ========== Commands
 @bot.command(aliases=['setup', 'dm', 'message'])
@@ -130,6 +143,7 @@ async def new(ctx, *args):
     """Send message to user."""
 
     await ctx.message.author.send("Hello!")
+    lprint(ctx, f"Send DM: {ctx.message.author.name}")
 
 @bot.command(aliases=['inv', 'Inv', 'Check', 'check', 'i', 'I'])
 async def inventorycheck(ctx, *product_code):
@@ -167,7 +181,7 @@ async def inventorycheck(ctx, *product_code):
     for i in product_data:
         embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`", inline=False)
     await ctx.send(embed=embed)
-    lprint(f"Fetched Product: {product_code}")
+    lprint(ctx, f"Inventory Check: {product_code}")
 
 @bot.command(aliases=['Codediff', 'dif', 'Diff', 'd', 'D'])
 async def codediff(ctx, *product_code):
@@ -199,7 +213,7 @@ async def codeadd(ctx, *product_code):
 
     await ctx.send("**Added codes**")
     await ctx.invoke(bot.get_command("codeget"))
-    lprint(f"Code added: {product_code}")
+    lprint(ctx, f"Code added: {product_code}")
 
 @bot.command(aliases=['remove', 'Remove', 'r', 'R'])
 async def coderemove(ctx, *product_code):
@@ -221,7 +235,7 @@ async def coderemove(ctx, *product_code):
     active_codes[ctx.message.author.name] = new_codes.copy()
 
     await ctx.send(f"Removed codes: {', '.join(removed_codes)}")
-    lprint(f'Removed codes: {product_code}')
+    lprint(ctx, f'Removed codes: {product_code}')
 
 @bot.command(aliases=['Clear', 'clear', 'cc', 'Cc', 'CC'])
 async def codeclear(ctx, *args):
@@ -233,7 +247,7 @@ async def codeclear(ctx, *args):
 
     active_codes[ctx.message.author.name].clear()
     await ctx.send("Cleared active codes")
-    lprint('Cleared codes')
+    lprint(ctx, 'Cleared codes')
 
 @bot.command(aliases=['Code', 'Codes', 'codes', 'c', 'C'])
 async def codeget(ctx, group=''):
@@ -262,7 +276,7 @@ async def codeget(ctx, group=''):
 
     await ctx.send(f"**Active Codes:**\n{text}")
     await ctx.send("----------END----------")
-    lprint('Fetched codes')
+    lprint(ctx, 'Fetched codes')
 
 # ===== Photo
 @bot.command(aliases=['box', 'Box', 'Boxphoto', 'Boxpicture', 'b', 'B', 'photo', 'Photo', 'picture', 'Picture''p', 'P'])
@@ -305,7 +319,7 @@ async def boxphoto(ctx, *product_code):
             embed.set_image(url=f"attachment://{i['Code']}.jpg")
             await ctx.send(file=file, embed=embed)
 
-    lprint(f'Fetched photo for: {product_code}')
+    lprint(ctx, f'Fetched photo for: {product_code}')
 
 @bot.command(aliases=['Boxphotoonly', 'photoonly', 'Photoonly', 'bp', 'Bp'])
 async def boxphotoonly(ctx, product_code):
@@ -317,7 +331,7 @@ async def boxphotoonly(ctx, product_code):
         return
     else:
         await ctx.send(f'Image for: {product_code}', file=file)
-        lprint(f"Fetched image: {product_code}")
+        lprint(ctx, f"Fetched image: {product_code}")
 
 @bot.command(aliases=['Boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
 async def boxphotoupload(ctx, product_code):
@@ -338,7 +352,7 @@ async def boxphotoupload(ctx, product_code):
     image_rescale.rescale(f"{box_photos_path}/{product_code}.jpg", 50)
 
     await ctx.invoke(bot.get_command("boxphoto"), product_code)
-    lprint(f"New box photo: {box_photos_path}/{product_code}.jpg")
+    lprint(ctx, f"New box photo: {box_photos_path}/{product_code}.jpg")
 
 @bot.command(aliases=['Boxphotorename', 'br', 'Br', 'Boxrename', 'rename', 'Rename', 're', 'Re'])
 async def boxphotorename(ctx, product_code, new_code):
@@ -350,7 +364,7 @@ async def boxphotorename(ctx, product_code, new_code):
         await ctx.send("Error renaming image.")
         return
     await ctx.send(f"Image Renamed: {product_code}.jpg > {new_code}.jpg")
-    lprint(f"Image Renamed: {product_code}.jpg > {new_code}.jpg")
+    lprint(ctx, f"Image Renamed: {product_code}.jpg > {new_code}.jpg")
 
 
 # ===== Extra
@@ -374,7 +388,8 @@ re, rename  - Rename image, re 7221 7222
 async def restartbot(ctx, now=''):
     """Restart this bot."""
 
-    lprint("Restarting bot...")
+    await ctx.send("***Rebooting Bot...*** :arrows_counterclockwise: ")
+    lprint(ctx, "Restarting bot...")
     os.chdir('/')
     os.chdir(bot_path)
     os.execl(sys.executable, sys.executable, *sys.argv)
@@ -384,6 +399,7 @@ async def gitupdate(ctx):
     """Gets update from GitHub."""
 
     await ctx.send("***Updating from GitHub...*** :arrows_counterclockwise:")
+    lprint(ctx, "Updating from GitHub")
     os.chdir(bot_path)
     os.system('git pull')
     await ctx.invoke(bot.get_command("restartbot"))
