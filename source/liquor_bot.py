@@ -12,7 +12,7 @@ __status__ = "Development"
 
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 bot_path = os.path.dirname(os.path.abspath(__file__))
-box_photos_path = '~/Pictures/liquor_boxes/'
+box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 bot_channel_id = 988549339808952371
 data_dict = {'Name': 'N/A', 'Details': 'N/A', 'Code': 'N/A', 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A', 'Have': 'N/A', 'Icon': '\U00002754'}
 # Codes stored for diff feature.
