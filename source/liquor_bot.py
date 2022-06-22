@@ -118,7 +118,7 @@ def get_product_data(product_code=None):
 
 
 # ========== Commands
-@bot.command(aliases=['i', 'I', 'inv', 'Inv', 'Check', 'check'])
+@bot.command(aliases=['inv', 'Inv', 'Check', 'check', 'i', 'I'])
 async def inventorycheck(ctx, *product_code):
     """Gets product data by store code(s)."""
 
@@ -150,7 +150,7 @@ async def inventorycheck(ctx, *product_code):
     await ctx.send(embed=embed)
     lprint(f"Fetched Product: {product_code}")
 
-@bot.command(aliases=['d', 'D', 'dif', 'Diff'])
+@bot.command(aliases=['Codediff', 'dif', 'Diff', 'd', 'D'])
 async def codediff(ctx, *product_code):
     """Checks if codes are in active_codes."""
 
@@ -158,7 +158,7 @@ async def codediff(ctx, *product_code):
         if i in active_codes[ctx.message.author.name]:
             await ctx.send(f"Match: {i}")
 
-@bot.command(aliases=[ 'a',  'A', 'Add', 'add', 'addcode'])
+@bot.command(aliases=['Add', 'add', 'addcode', 'Addcode', 'a', 'A'])
 async def codeadd(ctx, *product_code):
     """Add codes to active_codes."""
     global active_codes
@@ -182,7 +182,7 @@ async def codeadd(ctx, *product_code):
     await ctx.invoke(bot.get_command("codeget"))
     lprint(f"Code added: {product_code}")
 
-@bot.command(aliases=[ 'r', 'R', 'remove', 'Remove'])
+@bot.command(aliases=['remove', 'Remove', 'r', 'R'])
 async def coderemove(ctx, *product_code):
     """Removes active codes."""
 
@@ -200,7 +200,7 @@ async def coderemove(ctx, *product_code):
     await ctx.send(f"Removed codes: {', '.join(removed_codes)}")
     lprint(f'Removed codes: {product_code}')
 
-@bot.command(aliases=['cc', 'Cc', 'CC', 'Clear', 'clear'])
+@bot.command(aliases=['Clear', 'clear', 'cc', 'Cc', 'CC'])
 async def codeclear(ctx, *args):
     """Clears active_codes."""
 
@@ -212,7 +212,7 @@ async def codeclear(ctx, *args):
     await ctx.send("Cleared active codes")
     lprint('Cleared codes')
 
-@bot.command(aliases=['c', 'C', 'Code', 'Codes', 'codes'])
+@bot.command(aliases=['Code', 'Codes', 'codes', 'c', 'C'])
 async def codeget(ctx, group=''):
     """Fetches current active codes."""
 
@@ -242,7 +242,7 @@ async def codeget(ctx, group=''):
     lprint('Fetched codes')
 
 # ===== Photo
-@bot.command(aliases=['b', 'B', 'box', 'Box', 'Boxphoto', 'boxpicture', 'Boxpicture', 'P', 'p', 'picture', 'Picture'])
+@bot.command(aliases=['box', 'Box', 'Boxphoto', 'Boxpicture', 'b', 'B', 'picture', 'Picture''p', 'P'])
 async def boxphoto(ctx, *product_code):
     """Gets photo of liquor box from code."""
 
@@ -280,8 +280,8 @@ async def boxphoto(ctx, *product_code):
 
     lprint(f'Fetched photo for: {product_code}')
 
-@bot.command(aliases=['bi', 'Bi', 'Boximage', 'Image', 'image'])
-async def boxupimageonly(ctx, product_code):
+@bot.command(aliases=['Boxphotoonly', 'Boxphoto', 'bp', 'Bp'])
+async def boxphotoonly(ctx, product_code):
     """Fetches image of box from product_code if exists."""
 
     try: file = discord.File(f"{box_photos_path}/{product_code}.jpg", filename=f"{product_code}.jpg")
@@ -292,8 +292,8 @@ async def boxupimageonly(ctx, product_code):
         await ctx.send(f'Image for: {product_code}', file=file)
         lprint(f"Fetched image: {product_code}")
 
-@bot.command(aliases=['bu', 'Bu', 'Boxupload', 'u', 'U', 'upload', 'Upload'])
-async def boxupload(ctx, product_code):
+@bot.command(aliases=['Boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
+async def boxphotoupload(ctx, product_code):
     """Upload new photo of box and set filename."""
 
     try: product_code = str(int(product_code))
@@ -313,8 +313,8 @@ async def boxupload(ctx, product_code):
     await ctx.invoke(bot.get_command("boxphoto"), product_code)
     lprint(f"New box photo: {box_photos_path}/{product_code}.jpg")
 
-@bot.command(aliases=['br', 'Br', 'Boxrename', 'rename', 're', 'Re', 'Rename'])
-async def boximagerename(ctx, product_code, new_code):
+@bot.command(aliases=['Boxphotorename', 'br', 'Br', 'Boxrename', 'rename', 'Rename', 're', 'Re'])
+async def boxphotorename(ctx, product_code, new_code):
     """Rename photo."""
 
     # E.g. rename 7222 7221
