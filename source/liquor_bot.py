@@ -57,7 +57,6 @@ def get_soup(site_url):
     except: return False
     else: return BeautifulSoup(site_request.text, 'html.parser')
 
-
 def text_parser(text, index, split_str=None, slice=2):
     """Parses text from details page of product."""
 
@@ -117,7 +116,21 @@ def get_product_data(product_code=None):
     return liquor_data
 
 
+# ========== Misc
+def check_active(context):
+    """Checks if user has a list in active_codes."""
+    try:
+        _ = active_codes[context.message.author.name]
+        return True
+    except: return False
+
 # ========== Commands
+@bot.command(aliases=['setup', 'dm', 'message'])
+async def new(ctx, *args):
+    """Send message to user."""
+
+    await ctx.message.author.send("Hello!")
+
 @bot.command(aliases=['inv', 'Inv', 'Check', 'check', 'i', 'I'])
 async def inventorycheck(ctx, *product_code):
     """Gets product data by store code(s)."""
@@ -125,6 +138,12 @@ async def inventorycheck(ctx, *product_code):
     # Lets user use codes from active_codes.
     start_range, end_range = 0, None
     if 'codes' in product_code or 'c' in product_code:
+
+        # Checks if user has a list in active_codes
+        if not check_active(ctx):
+            await ctx.send("No active codes")
+            return
+
         # Optionally specify code group, use codeget() to see groups.
         if len(product_code) == 2:
             try:  # List slicing indexes for specified group.
@@ -188,6 +207,10 @@ async def coderemove(ctx, *product_code):
 
     global active_codes
 
+    if not check_active(ctx):
+        await ctx.send("No active codes")
+        return
+
     removed_codes, new_codes = [], []
     for i in active_codes[ctx.message.author.name]:
         # Skips adding code to active_codes if matched.
@@ -216,8 +239,8 @@ async def codeclear(ctx, *args):
 async def codeget(ctx, group=''):
     """Fetches current active codes."""
 
-    if not active_codes[ctx.message.author.name]:
-        await ctx.send("No active codes.")
+    if not check_active(ctx):
+        await ctx.send("No active codes")
         return
 
     # Get specified number group
@@ -249,6 +272,10 @@ async def boxphoto(ctx, *product_code):
     # Lets user use codes from active_codes.
     start_range, end_range = 0, None
     if 'codes' in product_code or 'c' in product_code:
+        if not check_active(ctx):
+            await ctx.send("No active codes")
+            return
+
         # Optionally specify code group, use codeget() to see groups.
         if len(product_code) == 2:
             try:
@@ -325,6 +352,8 @@ async def boxphotorename(ctx, product_code, new_code):
     await ctx.send(f"Image Renamed: {product_code}.jpg > {new_code}.jpg")
     lprint(f"Image Renamed: {product_code}.jpg > {new_code}.jpg")
 
+
+# ===== Extra
 @bot.command(aliases=['?'])
 async def shortcuts(ctx):
     """Custom help page."""
@@ -341,8 +370,6 @@ u, upload   - Upload new box image, u 7221
 re, rename  - Rename image, re 7221 7222
 ```""")
 
-
-# ===== Msc
 @bot.command(aliases=['rbot', 'rebootbot', 'botrestart', 'botreboot'])
 async def restartbot(ctx, now=''):
     """Restart this bot."""
