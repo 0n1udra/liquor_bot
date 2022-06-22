@@ -12,7 +12,7 @@ __status__ = "Development"
 
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 bot_path = os.path.dirname(os.path.abspath(__file__))
-box_photos_path = '/home/0n1udra/Pictures/liquor_boxes/'
+box_photos_path = '~/Pictures/liquor_boxes/'
 bot_channel_id = 988549339808952371
 data_dict = {'Name': 'N/A', 'Details': 'N/A', 'Code': 'N/A', 'Pack': 'N/A', 'Inventory': 'N/A', 'Ordered': 'N/A', 'Have': 'N/A', 'Icon': '\U00002754'}
 # Codes stored for diff feature.
@@ -289,7 +289,7 @@ async def boxupimageonly(ctx, product_code):
         await ctx.send(f'Image for: {product_code}', file=file)
         lprint(f"Fetched image: {product_code}")
 
-@bot.command(aliases=['bu', 'Bu', 'Boxupload', 'upload', 'Upload'])
+@bot.command(aliases=['bu', 'Bu', 'Boxupload', 'u', 'U', 'upload', 'Upload'])
 async def boxupload(ctx, product_code):
     try: product_code = str(int(product_code))
     except:
@@ -318,12 +318,15 @@ async def boximagerename(ctx, product_code, new_code):
 async def shortcuts(ctx):
 
     await ctx.send("""```
+Command     - Description, example
 c, codes    - Show current active codes
 a, add      - Add active codes, a 7221 6660 982
 r, remove   - Remove active codes, r 6660
 d, diff     - Check if code in active codes, d 7221 982
 i, inv      - Check inventory, i 7221 6660, i codes
 b, box      - Checks inventory and adds boxes
+u, upload   - Upload new box image, u 7221
+re, rename  - Rename image, re 7221 7222
 ```""")
 
 
