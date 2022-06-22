@@ -2,7 +2,9 @@ from PIL import Image
 import pathlib, sys
 
 def _rescale(image, percentage):
+    percentage = float(percentage) / 100
     with Image.open(image) as im:
+        im = im.convert('RGB')
         width, height = im.size
         resized_dimensions = (int(width * percentage), int(height * percentage))
         resized = im.resize(resized_dimensions)
@@ -20,7 +22,7 @@ if '__main__' == __name__:
 
     if len(sys.argv) == 4:
         if '-b' in sys.argv: x = 1
-        rescale(sys.argv[1+x], float(sys.argv[2+x])/100, batch=x)
+        rescale(sys.argv[1+x], sys.argv[2+x], batch=x)
 
     else: print("Usage: python3 [-b] input.jpg 75 (Percentage)")
 
