@@ -13,6 +13,7 @@ __status__ = "Development"
 bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
+box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 bot_channel_id = 988549339808952371
 ctx = "liquor_bot.py"  # For logging
@@ -195,8 +196,8 @@ async def inventorycheck(ctx, *product_code):
     await ctx.send(embed=embed)
     lprint(ctx, f"Inventory Check: {format(product_code)}")
 
-@bot.command(aliases=['Codediff', 'dif', 'Diff', 'd', 'D'])
-async def codediff(ctx, *product_code):
+@bot.command(aliases=['match', 'Match', 'm', 'M'])
+async def codematch(ctx, *product_code):
     """Checks if codes are in active_codes."""
 
     for i in product_code:
@@ -204,7 +205,7 @@ async def codediff(ctx, *product_code):
             # Will show what group the match was in
             await ctx.send(f"Match in group {active_codes[ctx.message.author.name].index(i) / 5 + 1:.0f}: {i}")
 
-@bot.command(aliases=['Add', 'add', 'addcode', 'Addcode', 'a', 'A'])
+@bot.command(aliases=['Add', 'add', 'a', 'A'])
 async def codeadd(ctx, *product_code):
     """Add codes to active_codes."""
 
@@ -230,7 +231,7 @@ async def codeadd(ctx, *product_code):
     await ctx.invoke(bot.get_command("codeget"))
     lprint(ctx, f"Code added: {format(product_code)}")
 
-@bot.command(aliases=['remove', 'Remove', 'r', 'R'])
+@bot.command(aliases=['remove', 'Remove', 'r', 'R', 'delete', 'Delete', 'd', 'D'])
 async def coderemove(ctx, *product_code):
     """Removes active codes."""
 
@@ -253,7 +254,7 @@ async def coderemove(ctx, *product_code):
     await ctx.send(f"Removed codes: {', '.join(removed_codes)}")
     lprint(ctx, f'Removed codes: {format(product_code)}')
 
-@bot.command(aliases=['Clear', 'clear', 'cc', 'Cc', 'CC'])
+@bot.command(aliases=['Clear', 'clear', 'cc', 'Cc', 'CC', 'reset', 'Reset'])
 async def codeclear(ctx, *args):
     """Clears active_codes."""
 
@@ -265,7 +266,7 @@ async def codeclear(ctx, *args):
     await ctx.send("Cleared active codes")
     lprint(ctx, 'Cleared codes')
 
-@bot.command(aliases=['Code', 'Codes', 'codes', 'c', 'C'])
+@bot.command(aliases=['codes', 'Codes', 'c', 'C'])
 async def codeget(ctx, group=''):
     """Fetches current active codes."""
 
@@ -305,7 +306,7 @@ def get_photos(code):
 
     return files
 
-@bot.command(aliases=['box', 'Box', 'Boxphoto', 'Boxpicture', 'b', 'B', 'photo', 'Photo', 'picture', 'Picture''p', 'P'])
+@bot.command(aliases=['box', 'Box', 'b', 'B', 'photo', 'Photo', 'picture', 'Picture', 'p', 'P'])
 async def boxphoto(ctx, *product_code):
     """Gets photo of liquor box from code."""
 
@@ -352,7 +353,7 @@ async def boxphoto(ctx, *product_code):
 
     lprint(ctx, f'Fetched inventory+photo: {format(product_code)}')
 
-@bot.command(aliases=['Boxphotoonly', 'photoonly', 'Photoonly', 'bp', 'Bp'])
+@bot.command(aliases=['bp', 'Bp'])
 async def boxphotoonly(ctx, *product_code):
     """Fetches image of box from product_code if exists."""
 
@@ -371,7 +372,7 @@ async def boxphotoonly(ctx, *product_code):
     # Prints out codes that had no corresponding images.
     await ctx.send(f"No images for: {', '.join(no_matches)}")
 
-@bot.command(aliases=['Boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
+@bot.command(aliases=['Boxupload', 'boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
 async def boxphotoupload(ctx, product_code):
     """Upload new photo of box and set filename."""
 
@@ -397,7 +398,7 @@ async def boxphotoupload(ctx, product_code):
 
     lprint(ctx, f"New box photo: {box_photos_path}/{product_code}.jpg")
 
-@bot.command(aliases=['Boxphotorename', 'br', 'Br', 'Boxrename', 'rename', 'Rename', 're', 'Re'])
+@bot.command(aliases=['boxrename', 'Boxrename', 'br', 'Br', 'rename', 'Rename'])
 async def boxphotorename(ctx, product_code, new_code):
     """Rename photo."""
 
@@ -409,6 +410,15 @@ async def boxphotorename(ctx, product_code, new_code):
     await ctx.send(f"Image Renamed: {product_code}.jpg > {new_code}.jpg")
     lprint(ctx, f"Image Renamed: {product_code}.jpg > {new_code}.jpg")
 
+@bot.command(aliases=['bd', 'Bd', 'bpd', 'Bpd'])
+async def boxphotodelete(ctx, photo_name):
+    """Moves photo to liquor_boxes_deleted folder."""
+
+    try:
+        # os.rename does actually move file.
+        os.rename(f"{box_photos_path}/{photo_name}.jpg", f"{box_photos_deleted_path}/{photo_name}.jpg")
+        await ctx.send(f"Deleted: {photo_name}")
+    except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
 
 # ===== Extra
 @bot.command(aliases=['?'])
@@ -420,12 +430,13 @@ Command     - Description, example
 c, codes    - Show current active codes
 a, add      - Add active codes, a 7221, a 7221 6660 982
 r, remove   - Remove active codes, r 6660, r 7221 6660
-d, diff     - Check if code in active codes, d 7221, d 7221 982
+m, match    - Check if code in active codes, d 7221, d 7221 982
 i, inv      - Show inventory data, i 7221, i 7221 6660, i codes, i c
-b, box      - Show inventory data with photo of boxes
+b, box      - Show inventory data with photo of boxes, b 7221, b 7221 6660, b c, b c 2
 bp          - Show only photo of boxes, bp 7221, bp 7221 6660, bp c 2
-u, upload   - Upload new box image, u 7221
-re, rename  - Rename image, re 7222 7221
+bu, upload  - Upload new box image, u 7221
+br, rename  - Rename image, re 7222 7221
+bd          - Delete photo, bd 7221
 ```""")
 
 @bot.command(aliases=['rbot', 'rebootbot', 'botrestart', 'botreboot'])
