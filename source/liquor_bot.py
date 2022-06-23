@@ -370,7 +370,7 @@ async def boxphotoonly(ctx, *product_code):
         else: await ctx.send(f'{filename[:-4]}', file=file)
 
     # Prints out codes that had no corresponding images.
-    await ctx.send(f"No images for: {', '.join(no_matches)}")
+    if no_matches: await ctx.send(f"No images for: {', '.join(no_matches)}")
 
 @bot.command(aliases=['Boxupload', 'boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
 async def boxphotoupload(ctx, product_code):
