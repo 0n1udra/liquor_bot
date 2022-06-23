@@ -43,9 +43,33 @@ def check_active(context):
         return True
     except: return False
 
-def remove_dupes(input_list): return list(set(input_list))
+def remove_dupes(input_list): return sorted(set(input_list), key=lambda x: input_list.index(x))
 
 def format(codes): return ', '.join(codes)
+
+async def check_use_ac(ctx, paramters):
+    """Get codes or a group from active_codes if received right parameter."""
+
+    use_ac, start_range, end_range = False, 0, None
+    for i in ['c', 'C', 'Code', 'code', 'Codes', 'codes']:
+        if i in paramters: use_ac = True
+
+    # If not using active_codes list, will remove dupes from input and return it.
+    if not use_ac: return remove_dupes(paramters)
+
+    if not check_active(ctx):
+        await ctx.send("No active codes")
+        return False
+
+    # Optionally specify code group, use codeget() to see groups.
+    if len(paramters) == 2:
+        try:  # Slices list up to extract the 5 specified codes of group.
+            start_range = int(paramters[-1]) * 5 - 5
+            end_range = start_range + 5
+        except:
+            await ctx.send("Could not group")
+            return
+    return active_codes[ctx.message.author.name][start_range:end_range]
 
 # ========== Discord Setup
 if os.path.isfile(token_file):
@@ -155,25 +179,7 @@ async def new(ctx, *args):
 async def inventorycheck(ctx, *product_code):
     """Gets product data by store code(s)."""
 
-    #product_code = list(set(product_code))
-    # Lets user use codes from active_codes.
-    start_range, end_range = 0, None
-    if 'codes' in product_code or 'c' in product_code:
-        # Checks if user has a list in active_codes
-        if not check_active(ctx):
-            await ctx.send("No active codes")
-            return
-
-        # Optionally specify code group, use codeget() to see groups.
-        if len(product_code) == 2:
-            try:  # List slicing indexes for specified group.
-                start_range = int(product_code[-1]) * 5 - 5
-                end_range = start_range + 5
-            except:
-                await ctx.send("Could not get number group")
-                return
-        product_code = active_codes[ctx.message.author.name][start_range:end_range]
-
+    product_code = await check_use_ac(ctx, product_code)
     await ctx.send(f"***Checking Inventory...***")
     product_data = get_product_data(product_code)
 
@@ -195,7 +201,8 @@ async def codediff(ctx, *product_code):
 
     for i in product_code:
         if i in active_codes[ctx.message.author.name]:
-            await ctx.send(f"Match: {i}")
+            # Will show what group the match was in
+            await ctx.send(f"Match in group {active_codes[ctx.message.author.name].index(i) / 5 + 1:.0f}: {i}")
 
 @bot.command(aliases=['Add', 'add', 'addcode', 'Addcode', 'a', 'A'])
 async def codeadd(ctx, *product_code):
@@ -233,9 +240,10 @@ async def coderemove(ctx, *product_code):
         await ctx.send("No active codes")
         return
 
+    product_code = await check_use_ac(ctx, product_code)
     removed_codes, new_codes = [], []
     for i in active_codes[ctx.message.author.name]:
-        # Skips adding code to active_codes if matched.
+        # Skips adding code to active_codes if matched code that needs to be removed.
         if i in product_code:
             removed_codes.append(i)
             continue
@@ -287,59 +295,81 @@ async def codeget(ctx, group=''):
     lprint(ctx, 'Fetched active codes')
 
 # ===== Photo
+def get_photos(code):
+    """Finds files with code in name, e.g. 7221.jpg, 7221-2.jpg"""
+
+    files = []
+    for i in os.listdir(box_photos_path):
+        if code in i:
+            files.append(i)
+
+    return files
+
 @bot.command(aliases=['box', 'Box', 'Boxphoto', 'Boxpicture', 'b', 'B', 'photo', 'Photo', 'picture', 'Picture''p', 'P'])
 async def boxphoto(ctx, *product_code):
     """Gets photo of liquor box from code."""
 
-    # Lets user use codes from active_codes.
-    start_range, end_range = 0, None
-    if 'codes' in product_code or 'c' in product_code:
-        if not check_active(ctx):
-            await ctx.send("No active codes")
-            return
-
-        # Optionally specify code group, use codeget() to see groups.
-        if len(product_code) == 2:
-            try:
-                start_range = int(product_code[-1]) * 5 - 5
-                end_range = start_range + 5
-            except:
-                await ctx.send("Could not get number group")
-                return
-        product_code = active_codes[ctx.message.author.name][start_range:end_range]
-
+    product_code = await check_use_ac(ctx, product_code)
     await ctx.send(f"***Checking Inventory and Fetching Images...***")
-    product_data = get_product_data(product_code[start_range:end_range])
+    product_data = get_product_data(product_code)
 
     if not product_data:
-        await ctx.send("No inventory data available.")
+        await ctx.send("No inventory data available. Double check all codes.")
         return False
 
-    for i in product_data:
-        # Embed changes depending on if file found.
-        embed = discord.Embed(title='Inventory')
-        try: file = discord.File(f"{box_photos_path}/{i['Code']}.jpg", filename=f"{i['Code']}.jpg")
-        except:
-            embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`\nNO AVAILABLE PHOTO", inline=False)
+    async def create_embed(i, file_path=None, multiple=False):
+        embed = discord.Embed()
+        try: file = discord.File(f"{box_photos_path}/{file_path}", filename=f"{file_path}")
+        except:  # If no matching image found for code.
+            embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`\nImage: Not Found", inline=False)
             await ctx.send(embed=embed)
-        else:  # If found photo
-            embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`",inline=False)
-            embed.set_image(url=f"attachment://{i['Code']}.jpg")
+        else:
+            # If product has multiple photos, only first embed of product will show details.
+            if multiple:
+                embed.set_image(url=f"attachment://{file_path}")
+                embed.add_field(name=f"{i['Name']}", value=f"Image: {file_path[:-4]}", inline=False)
+                await ctx.send(file=file, embed=embed)
+                return
+
+            embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`\nImage: {file_path[:-4]}", inline=False)
+            embed.set_image(url=f"attachment://{file_path}")
             await ctx.send(file=file, embed=embed)
+
+    for product in product_data:
+        # Embed changes depending on if file found.
+        filenames = get_photos(product['Code'])
+        # Create embed with details even if no photo found
+        if not filenames:
+            await create_embed(product)
+            continue
+
+        if len(filenames) > 1:
+            # If product has multiple images, first embed will show details only.
+            await create_embed(product, filenames[0])
+            for filename in filenames[1:]:
+                await create_embed(product, filename, multiple=True)
+        else: await create_embed(product, filenames[0])
 
     lprint(ctx, f'Fetched inventory+photo: {format(product_code)}')
 
 @bot.command(aliases=['Boxphotoonly', 'photoonly', 'Photoonly', 'bp', 'Bp'])
-async def boxphotoonly(ctx, product_code):
+async def boxphotoonly(ctx, *product_code):
     """Fetches image of box from product_code if exists."""
 
-    try: file = discord.File(f"{box_photos_path}/{product_code}.jpg", filename=f"{product_code}.jpg")
-    except:
-        await ctx.send("Not Image Found")
-        return
-    else:
-        await ctx.send(f'Image for: {product_code}', file=file)
-        lprint(ctx, f"Fetched image: {product_code}")
+    product_code = await check_use_ac(ctx, product_code)
+    files, no_matches = [], []
+    for i in product_code:
+        if filenames := get_photos(i):
+            files.extend(filenames)
+        else: no_matches.append(i)
+
+    for filename in files:
+        try: file = discord.File(f"{box_photos_path}/{filename}", filename=f"{filename}")
+        except: pass
+        else: await ctx.send(f'{filename[:-4]}', file=file)
+
+    # Prints out codes that had no corresponding images.
+    await ctx.send(f"No images for: {', '.join(no_matches)}")
 
 @bot.command(aliases=['Boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
 async def boxphotoupload(ctx, product_code):
@@ -350,16 +380,21 @@ async def boxphotoupload(ctx, product_code):
         await ctx.send("Please try again with corresponding product code")
         return
 
+    # No duplicate filenames
+    new_filename = f'{box_photos_path}/{product_code}-{random.randint(1, 10)}.jpg'
+    for i in range(100):
+        if os.path.isfile(new_filename):
+            new_filename = f'{box_photos_path}/{product_code}-{random.randint(1, 10)}.jpg'
+
     # Saves with code as filename. e.g. 7221.jpg
     for attachment in ctx.message.attachments:
-        await attachment.save(f'{box_photos_path}/{product_code}.jpg')
+        await attachment.save(new_filename)
 
     await ctx.send(f"Received new box photo for: {product_code}")
 
     # Rescales photo by 50%.
     image_rescale.rescale(f"{box_photos_path}/{product_code}.jpg", 50)
 
-    await ctx.invoke(bot.get_command("boxphoto"), product_code)
     lprint(ctx, f"New box photo: {box_photos_path}/{product_code}.jpg")
 
 @bot.command(aliases=['Boxphotorename', 'br', 'Br', 'Boxrename', 'rename', 'Rename', 're', 'Re'])
@@ -383,13 +418,14 @@ async def shortcuts(ctx):
     await ctx.send("""```
 Command     - Description, example
 c, codes    - Show current active codes
-a, add      - Add active codes, a 7221 6660 982
-r, remove   - Remove active codes, r 6660
-d, diff     - Check if code in active codes, d 7221 982
-i, inv      - Check inventory, i 7221 6660, i codes
-b, box      - Checks inventory and adds boxes
+a, add      - Add active codes, a 7221, a 7221 6660 982
+r, remove   - Remove active codes, r 6660, r 7221 6660
+d, diff     - Check if code in active codes, d 7221, d 7221 982
+i, inv      - Show inventory data, i 7221, i 7221 6660, i codes, i c
+b, box      - Show inventory data with photo of boxes
+bp          - Show only photo of boxes, bp 7221, bp 7221 6660, bp c 2
 u, upload   - Upload new box image, u 7221
-re, rename  - Rename image, re 7221 7222
+re, rename  - Rename image, re 7222 7221
 ```""")
 
 @bot.command(aliases=['rbot', 'rebootbot', 'botrestart', 'botreboot'])
@@ -401,14 +437,6 @@ async def restartbot(ctx, now=''):
     os.chdir('/')
     os.chdir(bot_path)
     os.execl(sys.executable, sys.executable, *sys.argv)
-
-@bot.command(aliases=['quitrbot', '?stop'])
-async def stopbot(ctx, now=''):
-    """Restart this bot."""
-
-    await ctx.send(":octagonal_sign: ** Bot Deactivated.**")
-    lprint(ctx, "Quitting bot")
-    sys.exit()
 
 @bot.command(aliases=['updatebot', 'botupdate', 'git', 'update'])
 async def gitupdate(ctx):
