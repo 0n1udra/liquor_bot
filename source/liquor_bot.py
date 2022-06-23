@@ -2,7 +2,7 @@ import image_rescale, datetime, requests, discord, random, sys, os
 from discord_components import DiscordComponents, Button, ButtonStyle,  Select, SelectOption, ComponentsBot
 from bs4 import BeautifulSoup
 
-__version__ = "1.1a"
+__version__ = "1.2a"
 __date__ = '2022/04/12'
 __author__ = "DT"
 __email__ = "dt01@pm.me"
