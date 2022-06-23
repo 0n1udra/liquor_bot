@@ -418,6 +418,7 @@ async def boxphotodelete(ctx, photo_name):
         # os.rename does actually move file.
         os.rename(f"{box_photos_path}/{photo_name}.jpg", f"{box_photos_deleted_path}/{photo_name}.jpg")
         await ctx.send(f"Deleted: {photo_name}")
+        lprint(ctx, f"Deleted: {photo_name}")
     except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
 
 # ===== Extra
