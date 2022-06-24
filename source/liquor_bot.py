@@ -157,12 +157,13 @@ def text_parser(text, index, split_str=None, slice=2):
     # E.g. 'Class: 898  IMPORTED VERMOUTH                        Status: A 070104' > 'Imported    return_data.update({'Name': product_code,'Code': product_code, 'Icon': '\U0001F6AB'}) vermouth'
     return ' '.join(text[index].split(split_str)[0].split()[slice:])
 
-def liquor_parser(product_code):
+def liquor_parser(product_code, user=None):
     """Parses data into dictionary."""
 
     # E.g. [{'Name': 'M & R Sweet Vermouth', 'Details': 'BACARDI USA INC, IMPORTED VERMOUTH, ITALIAN VERMOUTH ',
     #       'Pack': 6, 'Inventory': 8, 'Ordered': 12liquor_product_data = []}
-    return_data = data_dict.copy()
+    try: return_data = user_liquor_data[user][product_code].copy()
+    except: return_data = data_dict.copy()
     return_data.update({'Name': product_code,'Code': product_code})
 
     # Product details page, Name, bottles perpack, etc.
@@ -194,7 +195,7 @@ def liquor_parser(product_code):
 
     return return_data
 
-def get_product_data(product_codes=None):
+def get_product_data(product_codes=None, user=None):
     """Fetches and parses product data."""
 
     liquor_data = []
@@ -204,7 +205,7 @@ def get_product_data(product_codes=None):
     if not product_codes: return False
 
     for i in product_codes:
-        liquor_data.append(liquor_parser(i))
+        liquor_data.append(liquor_parser(i, user))
 
     lprint(ctx, f"Fetched product data: {format(product_codes)}")
     return liquor_data
@@ -243,7 +244,7 @@ async def inventorycheck(ctx, *product_codes):
     user = ctx.message.author.name
     product_codes = await check_use_ac(ctx, product_codes)
     await ctx.send(f"***Checking Inventory...***")
-    product_data = get_product_data(product_codes)
+    product_data = get_product_data(product_codes, user)
 
     if not product_data:
         await ctx.send("No inventory data available.")
