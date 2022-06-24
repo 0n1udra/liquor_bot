@@ -492,7 +492,7 @@ async def boxphotoonly(ctx, *product_codes):
 async def boxphotoupload(ctx, product_codes):
     """Upload new photo of box and set filename."""
 
-    product_codes = check_codes_usable(product_codes)
+    product_codes = check_codes_usable([product_codes])[0]
     if not product_codes:
         await ctx.send("Please try again with corresponding product code")
         return
@@ -508,12 +508,13 @@ async def boxphotoupload(ctx, product_codes):
     for attachment in ctx.message.attachments:
         await attachment.save(file_path)
 
-    await ctx.send(f"New upload: {new_filename}")
-
     # Rescales photo by 50%.
     image_rescale.rescale(file_path, 50)
 
+    
+    await ctx.send(f"New upload: {new_filename}")
     lprint(ctx, f"New box photo: {new_filename}")
+    await ctx.invoke(bot.get_command("boxphoto"), product_codes)
 
 @bot.command(aliases=['boxrename', 'Boxrename', 'br', 'Br', 'rename', 'Rename'])
 async def boxphotorename(ctx, product_codes, new_code):
@@ -570,7 +571,7 @@ br, rename  - Rename image, re 7222 7221
 bd          - Delete photo, bd 7221
 ```""")
 
-@bot.command(aliases=['rbot', 'rebootbot', 'botrestart', 'botreboot'])
+@bot.command(aliases=['Rbot', 'rbot', 'rebootbot', 'botrestart', 'botreboot'])
 async def restartbot(ctx, now=''):
     """Restart this bot."""
 
