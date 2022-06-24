@@ -22,7 +22,7 @@ data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered']
 data_dict = {k:'N/A' for k in data_points}
 # No Entry: Not exist | X: Exists but not on hand | Check mark: On hand | F: Box found | S: Shelved
 data_dict.update({'Icon': ':no_entry_sign:', 'Status': ''})
-user_liquor_data = {'test_user': {'7777777': dict()}}  # Keep track of status of product found or shelved.
+user_liquor_data = {'test_user': dict()}  # Keep track of status of product found or shelved.
 user_active_codes = {'test_user': ['7777777']}  # Each user gets own list of active codes
 user_embeds = {'test_user': None}
 
@@ -96,11 +96,11 @@ def status_updater(ctx, icon, status, product_codes):
     except: user = ctx
 
     if not check_dict(ctx, user_liquor_data):
-        user_liquor_data[user].append(data_dict)
+        user_liquor_data.update({user: dict()})
 
     for code in product_codes:
         try: user_liquor_data[user][code].update({'Icon': icon, 'Status': status, 'Code': code})
-        except: user_liquor_data[user] |= {code: {'Icon': icon, 'Status': status, 'Code': code}}
+        except: user_liquor_data[user][code] = {'Icon': icon, 'Status': status, 'Code': code}
 
 def new_inv_embed(user, product_data):
     """Create new inventory embed. Also used for updating it."""
@@ -110,8 +110,8 @@ def new_inv_embed(user, product_data):
     try: user = user.message.author.name
     except: pass
 
-    if not check_dict(ctx, user_liquor_data):
-        user_liquor_data[user] = dict()
+    if not check_dict(user, user_liquor_data):
+        user_liquor_data.update({user: dict()})
 
     # If received dictionary containing product data
     try:
@@ -134,6 +134,7 @@ def update_user_embed(user, embed_msg):
     """Updates embed in user_embeds dict"""
 
     global user_embeds
+
     try: user_embeds[user].update(embed_msg)
     except: user_embeds[user] = embed_msg
 
@@ -162,7 +163,7 @@ def liquor_parser(product_code):
     # E.g. [{'Name': 'M & R Sweet Vermouth', 'Details': 'BACARDI USA INC, IMPORTED VERMOUTH, ITALIAN VERMOUTH ',
     #       'Pack': 6, 'Inventory': 8, 'Ordered': 12liquor_product_data = []}
     return_data = data_dict.copy()
-    return_data.update({'Name': product_code,'Code': product_code, 'Icon': '\U0001F6AB'})
+    return_data.update({'Name': product_code,'Code': product_code})
 
     # Product details page, Name, bottles perpack, etc.
     product_details_url = f'https://ice.liquor.nh.gov/public/default.asp?Category=inquiries&Service=brandinfopost&req={product_code}'
@@ -249,6 +250,7 @@ async def inventorycheck(ctx, *product_codes):
         return False
 
     # Preserves 'Icon' value from user_liquor_data
+
     for i in product_data:
         for k, v in i.items():
             if 'Icon' in k:
@@ -271,7 +273,7 @@ async def found(ctx, *product_codes):
 
     # Creates dictionary for user liquor data (like status)
     if not check_dict(ctx, user_liquor_data):
-        user_liquor_data[user] = dict()
+        user_liquor_data.update({user: dict()})
 
     # Updates product data 'Icon' vlue
     status_updater(ctx, ':regional_indicator_f:', 'Found', product_codes)
@@ -286,13 +288,13 @@ async def found(ctx, *product_codes):
 
 @bot.command(aliases=['s', 'S', 'Shelved'])
 async def shelved(ctx, *product_codes):
-    global user_liquor_data
+    global user_liquor_data, user_embeds
 
     user = ctx.message.author.name
     product_codes = await check_use_ac(ctx, product_codes)
 
     if not check_dict(ctx, user_liquor_data):
-        user_liquor_data[user] = dict()
+        user_liquor_data.update({user: dict()})
 
     status_updater(ctx, ':regional_indicator_s:', 'Shelved', product_codes)
     try:
@@ -301,7 +303,6 @@ async def shelved(ctx, *product_codes):
     except: pass
     await ctx.send(f"Updated status to 'Shelved': {format(product_codes)}")
     lprint(ctx, f"Status Update 'Shelved': {format(product_codes)}")
-
 
 # ===== Active Codes
 @bot.command(aliases=['match', 'Match', 'm', 'M'])
