@@ -437,7 +437,7 @@ async def boxphotoonly(ctx, *product_codes):
     product_codes = await check_use_ac(ctx, product_codes)
     files, no_matches = [], []
     for i in product_codes:
-        if filenames := get_photos(i):
+        if filenames := get_photos(i):  # Returns list if files found
             files.extend(filenames)
         else: no_matches.append(i)
 
@@ -501,6 +501,29 @@ async def boxphotodelete(ctx, photo_name):
         lprint(ctx, f"Deleted: {photo_name}")
     except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
 
+@bot.command(hidden=True, aliases=['pd'])
+async def photodupes(ctx):
+
+    files, have_multiple = [], []
+    for i in os.listdir(box_photos_path):
+        files.append(i)
+
+    # Checks if there's multiple photos of same product (not duplicate files)
+    for i in files:
+        counter = 0
+        try: i = i.split('-')[0]
+        except: i = i.split('.jpg')[0]
+        for j in files:
+            # In case of files like 7221-4.jpg
+            if j.startswith(i): counter += 1
+        if counter > 1:
+            have_multiple.append(i)
+            for file in get_photos(i):
+                os.rename(f"{box_photos_path}/{file}", f"/home/0n1udra/Pictures/dupes/{file}")
+
+    await ctx.send(format(have_multiple))
+    await ctx.send(f"Files moved: {format(have_multiple)}")
+
 # ===== Extra
 @bot.command(aliases=['?', 'alias', 'shortcuts'])
 async def commands(ctx):
@@ -533,7 +556,7 @@ br, rename  - Rename image, re 7222 7221
 bd          - Delete photo, bd 7221
 ```""")
 
-@bot.command(aliases=['Rbot', 'rbot', 'rebootbot', 'botrestart', 'botreboot'])
+@bot.command(hidden=True, aliases=['Rbot', 'rbot', 'rebootbot', 'botrestart', 'botreboot'])
 async def restartbot(ctx, now=''):
     """Restart this bot."""
 
@@ -543,7 +566,7 @@ async def restartbot(ctx, now=''):
     os.chdir(bot_path)
     os.execl(sys.executable, sys.executable, *sys.argv)
 
-@bot.command(aliases=['updatebot', 'botupdate', 'git', 'update'])
+@bot.command(hidden=True, aliases=['updatebot', 'botupdate', 'git', 'update'])
 async def gitupdate(ctx):
     """Gets update from GitHub."""
 
