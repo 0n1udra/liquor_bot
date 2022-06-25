@@ -377,7 +377,7 @@ def get_photos(code):
 
     files = []
     for i in os.listdir(box_photos_path):
-        if code in i:
+        if i.startswith(code):
             files.append(i)
 
     return files
@@ -428,6 +428,7 @@ async def boxphoto(ctx, *product_codes):
         else: await create_embed(product, filenames[0])
 
     lprint(ctx, f'Fetched inventory+photo: {format(product_codes)}')
+    await ctx.send("Finished")
 
 @bot.command(aliases=['bp', 'Bp'])
 async def boxphotoonly(ctx, *product_codes):
@@ -447,6 +448,7 @@ async def boxphotoonly(ctx, *product_codes):
 
     # Prints out codes that had no corresponding images.
     if no_matches: await ctx.send(f"No images for: {format(no_matches)}")
+    await ctx.send("Finished")
 
 @bot.command(aliases=['Boxupload', 'boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
 async def boxphotoupload(ctx, product_codes):
