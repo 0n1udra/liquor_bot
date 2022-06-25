@@ -21,7 +21,7 @@ ctx = "liquor_bot.py"  # For logging
 data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered']
 data_dict = {k:'N/A' for k in data_points}
 # No Entry: Not exist | X: Exists but not on hand | Check mark: On hand | F: Box found | S: Shelved
-data_dict.update({'Icon': ':no_entry_sign:', 'Status': ''})
+data_dict.update({'Icon': ':question:', 'Status': ''})
 user_liquor_data = {'test_user': data_dict}  # Keep track of status of product found or shelved.
 user_active_codes = {'test_user': ['7777777']}  # Each user gets own list of active codes
 
@@ -66,11 +66,6 @@ def remove_dupes(input_list): return sorted(set(input_list), key=lambda x: input
 async def check_use_ac(ctx, paramters):
     """Get codes or a group from user_active_codes if received right parameter."""
 
-    # Check if user has codes to use
-    if not check_dict(ctx, user_active_codes):
-        await ctx.send("No active codes. Use `add` command to add codes.")
-        return False
-
     user = ctx.message.author.name
     use_ac, list_index = False, 0
     for i in ['c', 'C', 'Code', 'code', 'Codes', 'codes']:
@@ -87,7 +82,10 @@ async def check_use_ac(ctx, paramters):
         try: list_index = int(paramters[-1]) * 5 - 5
         except: await ctx.send("Could not get group")
         else: return user_active_codes[user][list_index:list_index + 5 if list_index else len(user_active_codes[user])]
-    else: return user_active_codes[user]
+    else:
+        try: return user_active_codes[user]
+        except: return False
+
 
 def status_updater(ctx, icon, status, product_codes):
     """Updates status of product, i.e. found, shelved."""
@@ -227,7 +225,7 @@ async def inventorycheck(ctx, *product_codes):
                 except: pass
 
     embed = discord.Embed(title='Inventory')
-    embed.add_field(name='Legend', value=f"On hand: :white_check_mark: | Not on hand: :x: | Item not found: :no_entry_sign:\nFound: :regional_indicator_f: | Shelved: :regional_indicator_s:")
+    embed.add_field(name='Legend', value=f":white_check_mark:: On hand | :x:: Not on hand | :question:: Unknown Item\n:regional_indicator_f:: Box found | :regional_indicator_s:: Shelved")
     for i in product_data:
         # Updates/adds to user_liquor_data
         try: user_liquor_data[user][i['Code']].update(i)
@@ -300,7 +298,7 @@ async def codeadd(ctx, *product_codes):
         await ctx.send("Not all were numbers.")
         return
 
-    await ctx.send("**Added codes**")
+    await ctx.send(f"Added codes: {format(product_codes)}")
     await ctx.invoke(bot.get_command("codeget"))
     lprint(ctx, f"Code added: {format(product_codes)}")
 
@@ -518,9 +516,9 @@ m, match    - Check if code in active codes, d 7221, d 7221 982
 
 i, inv      - Show inventory data, i 7221, i 7221 6660, i codes, i c
 
-f, found   - Update status product's box located, bf 7221, bf 7221 6660, bf c, bf c 2
+f, found   - Update status, box found, bf 7221, bf 7221 6660, bf c, bf c 2
 
-s, shelved - Update status product's been shelved, bs 7221, bs 7221 6660, bs c, bs c 2
+s, shelved - Update status, product shelved, bs 7221, bs 7221 6660, bs c, bs c 2
 
 b, box      - Show inventory data with photo of boxes, b 7221, b 7221 6660, b c, b c 2
 
