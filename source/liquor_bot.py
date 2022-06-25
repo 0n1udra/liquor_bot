@@ -22,9 +22,8 @@ data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered']
 data_dict = {k:'N/A' for k in data_points}
 # No Entry: Not exist | X: Exists but not on hand | Check mark: On hand | F: Box found | S: Shelved
 data_dict.update({'Icon': ':no_entry_sign:', 'Status': ''})
-user_liquor_data = {'test_user': dict()}  # Keep track of status of product found or shelved.
+user_liquor_data = {'test_user': data_dict}  # Keep track of status of product found or shelved.
 user_active_codes = {'test_user': ['7777777']}  # Each user gets own list of active codes
-user_embeds = {'test_user': None}
 
 def lprint(ctx, msg):
     """Prints and Logs events in file."""
@@ -67,26 +66,28 @@ def remove_dupes(input_list): return sorted(set(input_list), key=lambda x: input
 async def check_use_ac(ctx, paramters):
     """Get codes or a group from user_active_codes if received right parameter."""
 
-    use_ac, start_range, end_range = False, 0, None
+    # Check if user has codes to use
+    if not check_dict(ctx, user_active_codes):
+        await ctx.send("No active codes. Use `add` command to add codes.")
+        return False
+
+    user = ctx.message.author.name
+    use_ac, list_index = False, 0
     for i in ['c', 'C', 'Code', 'code', 'Codes', 'codes']:
         if i in paramters: use_ac = True
-
-    # If not using user_active_codes list, will remove dupes from input and return it.
+    # When not using user_active_codes list
     if not use_ac: return remove_dupes(paramters)
-
-    if not check_dict(ctx, user_active_codes):
-        await ctx.send("No active codes")
-        return False
 
     # Optionally specify code group, use codeget() to see groups.
     if len(paramters) == 2:
-        try:  # Slices list up to extract the 5 specified codes of group.
-            start_range = int(paramters[-1]) * 5 - 5
-            end_range = start_range + 5
-        except:
-            await ctx.send("Could not group")
-            return
-    return user_active_codes[ctx.message.author.name][start_range:end_range]
+        # Need special case to fetch group 1 of codes
+        if paramters[-1] == '1': return user_active_codes[user][:5]
+
+        # Slices list up to extract the 5 specified codes of group.
+        try: list_index = int(paramters[-1]) * 5 - 5
+        except: await ctx.send("Could not get group")
+        else: return user_active_codes[user][list_index:list_index + 5 if list_index else len(user_active_codes[user])]
+    else: return user_active_codes[user]
 
 def status_updater(ctx, icon, status, product_codes):
     """Updates status of product, i.e. found, shelved."""
@@ -101,42 +102,6 @@ def status_updater(ctx, icon, status, product_codes):
     for code in product_codes:
         try: user_liquor_data[user][code].update({'Icon': icon, 'Status': status, 'Code': code})
         except: user_liquor_data[user][code] = {'Icon': icon, 'Status': status, 'Code': code}
-
-def new_inv_embed(user, product_data):
-    """Create new inventory embed. Also used for updating it."""
-
-    global user_liquor_data
-
-    try: user = user.message.author.name
-    except: pass
-
-    if not check_dict(user, user_liquor_data):
-        user_liquor_data.update({user: dict()})
-
-    # If received dictionary containing product data
-    try:
-        list_from_dict = []
-        for k, v in product_data.items():
-            list_from_dict.append(v)
-    except: pass
-    else: product_data = list_from_dict
-
-    embed = discord.Embed(title='Inventory')
-    embed.add_field(name='Legend', value=f"On hand: :white_check_mark: | Not on hand: :x: | Item not found: :no_entry_sign:\nFound: :regional_indicator_f: | Shelved: :regional_indicator_s:")
-    for i in product_data:
-        # Updates/adds to user_liquor_data
-        try: user_liquor_data[user][i['Code']].update(i)
-        except: user_liquor_data[user] |= {i['Code']: i}
-        embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`", inline=False)
-    return embed
-
-def update_user_embed(user, embed_msg):
-    """Updates embed in user_embeds dict"""
-
-    global user_embeds
-
-    try: user_embeds[user].update(embed_msg)
-    except: user_embeds[user] = embed_msg
 
 # ===== Web Scraper
 def get_soup(site_url):
@@ -161,9 +126,10 @@ def liquor_parser(product_code, user=None):
     """Parses data into dictionary."""
 
     # E.g. [{'Name': 'M & R Sweet Vermouth', 'Details': 'BACARDI USA INC, IMPORTED VERMOUTH, ITALIAN VERMOUTH ',
-    #       'Pack': 6, 'Inventory': 8, 'Ordered': 12liquor_product_data = []}
-    try: return_data = user_liquor_data[user][product_code].copy()
-    except: return_data = data_dict.copy()
+    #       'Pack': 6, 'Inventory': 8, 'Ordered': 12, etc...}
+    return_data = data_dict.copy()
+    try: return_data.update(user_liquor_data[user][product_code])
+    except: pass
     return_data.update({'Name': product_code,'Code': product_code})
 
     # Product details page, Name, bottles perpack, etc.
@@ -239,7 +205,7 @@ async def new(ctx, *args):
 async def inventorycheck(ctx, *product_codes):
     """Gets product data by store code(s)."""
 
-    global user_embeds, user_liquor_data
+    global user_liquor_data
 
     user = ctx.message.author.name
     product_codes = await check_use_ac(ctx, product_codes)
@@ -250,24 +216,30 @@ async def inventorycheck(ctx, *product_codes):
         await ctx.send("No inventory data available.")
         return False
 
-    # Preserves 'Icon' value from user_liquor_data
+    if not check_dict(user, user_liquor_data):
+        user_liquor_data.update({user: dict()})
 
+    # Preserves 'Icon' value from user_liquor_data
     for i in product_data:
         for k, v in i.items():
             if 'Icon' in k:
                 try: i['Icon'] = user_liquor_data[user][i['Code']]['Icon']
                 except: pass
 
-    # TODO Add feature showing what code has error (like a letter instead of number)
+    embed = discord.Embed(title='Inventory')
+    embed.add_field(name='Legend', value=f"On hand: :white_check_mark: | Not on hand: :x: | Item not found: :no_entry_sign:\nFound: :regional_indicator_f: | Shelved: :regional_indicator_s:")
+    for i in product_data:
+        # Updates/adds to user_liquor_data
+        try: user_liquor_data[user][i['Code']].update(i)
+        except: user_liquor_data[user] |= {i['Code']: i}
+        embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`", inline=False)
 
-    embed = new_inv_embed(user, product_data)
-    embed_msg = await ctx.send(embed=embed)
-    update_user_embed(user, embed_msg)
+    await ctx.send(embed=embed)
     lprint(ctx, f"Inventory Check: {format(product_codes)}")
 
 @bot.command(aliases=['f', 'F', 'Found'])
 async def found(ctx, *product_codes):
-    global user_embeds, user_liquor_data
+    global user_liquor_data
 
     user = ctx.message.author.name
     product_codes = await check_use_ac(ctx, product_codes)
@@ -278,18 +250,13 @@ async def found(ctx, *product_codes):
 
     # Updates product data 'Icon' vlue
     status_updater(ctx, ':regional_indicator_f:', 'Found', product_codes)
-
     # Updates embed with new status
-    try:
-        embed_msg = await user_embeds[user].edit(embed=new_inv_embed(user, user_liquor_data[user]))
-        update_user_embed(user, embed_msg)
-    except: pass
-    await ctx.send(f"Updated status to 'Found': {format(product_codes)}")
-    lprint(ctx, f"Status Update 'Found': {format(product_codes)}")
+    await ctx.send(f"Found: {format(product_codes)}")
+    lprint(ctx, f"Found: {format(product_codes)}")
 
 @bot.command(aliases=['s', 'S', 'Shelved'])
 async def shelved(ctx, *product_codes):
-    global user_liquor_data, user_embeds
+    global user_liquor_data
 
     user = ctx.message.author.name
     product_codes = await check_use_ac(ctx, product_codes)
@@ -298,12 +265,8 @@ async def shelved(ctx, *product_codes):
         user_liquor_data.update({user: dict()})
 
     status_updater(ctx, ':regional_indicator_s:', 'Shelved', product_codes)
-    try:
-        embed_msg = await user_embeds[user].edit(embed=new_inv_embed(user, user_liquor_data[user]))
-        update_user_embed(user, embed_msg)
-    except: pass
-    await ctx.send(f"Updated status to 'Shelved': {format(product_codes)}")
-    lprint(ctx, f"Status Update 'Shelved': {format(product_codes)}")
+    await ctx.send(f"Shelved: {format(product_codes)}")
+    lprint(ctx, f"Shelved: {format(product_codes)}")
 
 # ===== Active Codes
 @bot.command(aliases=['match', 'Match', 'm', 'M'])
@@ -382,20 +345,19 @@ async def codeclear(ctx, *args):
 async def codeget(ctx, group=''):
     """Fetches current active codes."""
 
+    user = ctx.message.author.name
     if not check_dict(ctx, user_active_codes):
         await ctx.send("No active codes")
         return
 
     # Get specified number group
-    start_range, end_range = 0, None
-    try:
-        start_range = int(group) * 5 - 5
-        end_range = start_range + 5
+    list_index = 0
+    try: list_index = int(group) * 5 - 5
     except: pass
 
     # Prints out all user_active_codes in groups of 5 or just a specific group.
     text, counter = '', 0
-    for i in user_active_codes[ctx.message.author.name][start_range:end_range]:
+    for i in user_active_codes[user][list_index:list_index + 5 if list_index else len(user_active_codes[user])]:
         if group and counter % 5 == 0: text += f"**Group {group}** -----\n"
         elif counter == 0: text += '**Group 1** ----------\n'
         elif counter % 5 == 0 and counter > 1:
@@ -403,7 +365,7 @@ async def codeget(ctx, group=''):
         counter += 1
 
         status = ''
-        try: status = user_liquor_data[ctx.message.author.name][i]['Status']
+        try: status = user_liquor_data[user][i]['Status']
         except: pass
         text += f'{i} {status}\n'
 
