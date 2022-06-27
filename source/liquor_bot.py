@@ -1,9 +1,10 @@
 import image_rescale, datetime, requests, discord, random, sys, os
 from discord_components import DiscordComponents, Button, ButtonStyle,  Select, SelectOption, ComponentsBot
+from file_read_backwards import FileReadBackwards
 from bs4 import BeautifulSoup
 
-__version__ = "1.2a"
-__date__ = '2022/04/12'
+__version__ = "2.1a"
+__date__ = '2022/04/27'
 __author__ = "DT"
 __email__ = "dt01@pm.me"
 __license__ = "GPL 3"
@@ -11,19 +12,19 @@ __status__ = "Development"
 
 # ========== Variable & Funcs
 bot_path = os.path.dirname(os.path.abspath(__file__))
-bot_log_file = bot_path + '/liquor_log.txt'
+bot_log_file = bot_path + '/beta_liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
-token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
-bot_channel_id = 988549339808952371
+token_file = f'{os.getenv("HOME")}/keys/beta_liquor_bot.token'
+bot_channel_id = 991095966700548147
 ctx = "liquor_bot.py"  # For logging
 
 data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered']
 data_dict = {k:'N/A' for k in data_points}
-# No Entry: Not exist | X: Exists but not on hand | Check mark: On hand | F: Box found | S: Shelved
+# No Entry: Not exist | X: Exists but not on-hand | Check mark: On hand | F: Box found | S: Shelved
 data_dict.update({'Icon': ':question:', 'Status': ''})
 user_liquor_data = {'test_user': data_dict}  # Keep track of status of product found or shelved.
-user_active_codes = {'test_user': ['7777777']}  # Each user gets own list of active codes
+user_active_codes = {'test_user': ['7777777']}  # Each user gets own list of saved codes
 
 def lprint(ctx, msg):
     """Prints and Logs events in file."""
@@ -38,7 +39,10 @@ def lprint(ctx, msg):
     with open(bot_log_file, 'a') as file:
         file.write(output + '\n')
 
-def format(codes): return ', '.join(codes)
+def format(codes):
+    """Formats codes for messages"""
+
+    return ', '.join(codes)
 
 def check_dict(key, input_dict):
     """Checks if user has a list in user_active_codes."""
@@ -61,7 +65,9 @@ def check_codes_usable(input_codes):
         return return_data
     except: return False
 
-def remove_dupes(input_list): return sorted(set(input_list), key=lambda x: input_list.index(x))
+def remove_dupes(input_list):
+    """Removes duplicate codes while preserving order"""
+    return sorted(set(input_list), key=lambda x: input_list.index(x))
 
 async def check_use_ac(ctx, paramters):
     """Get codes or a group from user_active_codes if received right parameter."""
@@ -80,26 +86,11 @@ async def check_use_ac(ctx, paramters):
 
         # Slices list up to extract the 5 specified codes of group.
         try: list_index = int(paramters[-1]) * 5 - 5
-        except: await ctx.send("Could not get group")
+        except: await ctx.send("Could not get group.")
         else: return user_active_codes[user][list_index:list_index + 5 if list_index else len(user_active_codes[user])]
     else:
         try: return user_active_codes[user]
         except: return False
-
-
-def status_updater(ctx, icon, status, product_codes):
-    """Updates status of product, i.e. found, shelved."""
-    global user_liquor_data
-
-    try: user = ctx.message.author.name
-    except: user = ctx
-
-    if not check_dict(ctx, user_liquor_data):
-        user_liquor_data.update({user: dict()})
-
-    for code in product_codes:
-        try: user_liquor_data[user][code].update({'Icon': icon, 'Status': status, 'Code': code})
-        except: user_liquor_data[user][code] = {'Icon': icon, 'Status': status, 'Code': code}
 
 # ===== Web Scraper
 def get_soup(site_url):
@@ -175,13 +166,13 @@ def get_product_data(product_codes=None, user=None):
     return liquor_data
 
 
-# ========== Discord Setup
+# ========== Discord
 if os.path.isfile(token_file):
     with open(token_file, 'r') as file: TOKEN = file.readline()
 else:
     print("Missing Token File:", token_file)
     sys.exit()
-bot = ComponentsBot(command_prefix='')
+bot = ComponentsBot(command_prefix='', case_insensitive=True, help_command=None)
 
 @bot.event
 async def on_ready():
@@ -190,16 +181,14 @@ async def on_ready():
     bot_channel = bot.get_channel(bot_channel_id)
     await bot_channel.send(f':white_check_mark: **Bot PRIMED** {datetime.datetime.now().strftime("%X")}')
 
-
-# ===== Commands
-@bot.command(aliases=['setup', 'dm', 'message'])
+@bot.command(aliases=['setup', 'dm'])
 async def new(ctx, *args):
     """Send message to user."""
 
-    await ctx.message.author.send("Hello!")
-    lprint(ctx, f"Send DM: {ctx.message.author.name}")
+    await ctx.message.author.send("Hello! Use `help` command for more info.")
+    lprint(ctx, f"Sent DM: {ctx.message.author.name}")
 
-@bot.command(aliases=['inv', 'Inv', 'inventory', 'Inventory', 'Check', 'check', 'i', 'I'])
+@bot.command(aliases=['info', 'inv', 'inventory', 'i'])
 async def inventorycheck(ctx, *product_codes):
     """Gets product data by store code(s)."""
 
@@ -225,49 +214,85 @@ async def inventorycheck(ctx, *product_codes):
                 except: pass
 
     embed = discord.Embed(title='Inventory')
-    embed.add_field(name='Legend', value=f":white_check_mark:: On hand | :x:: Not on hand | :question:: Unknown Item\n:regional_indicator_f:: Box found | :regional_indicator_s:: Shelved")
+    embed.add_field(name='Legend', value=f":white_check_mark: On-hand | :x: Not on-hand | :question: Unknown\n:regional_indicator_f: Box found | :regional_indicator_s: Shelved")
     for i in product_data:
         # Updates/adds to user_liquor_data
         try: user_liquor_data[user][i['Code']].update(i)
         except: user_liquor_data[user] |= {i['Code']: i}
-        embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"*Pack:* **__{i['Pack']}__** | *On-hand:* **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`", inline=False)
+        image_status = 'Not found'
+        if get_photos(i['Code']): image_status = 'Available'
+
+        embed.add_field(name=f"{i['Icon']} {i['Name']}", value=f"Pack: **__{i['Pack']}__** | On-hand: **__{i['Inventory']}__** | Ordered: {i['Ordered']}\nDetails: `{i['Code']}, {i['Details']}`\nImage: **{image_status}**", inline=False)
 
     await ctx.send(embed=embed)
     lprint(ctx, f"Inventory Check: {format(product_codes)}")
 
-@bot.command(aliases=['f', 'F', 'Found'])
-async def found(ctx, *product_codes):
+# ===== Box Status
+async def status_updater(ctx, icon, status, product_codes):
+    """Updates status of product, i.e. found, shelved."""
+
     global user_liquor_data
 
     user = ctx.message.author.name
-    product_codes = await check_use_ac(ctx, product_codes)
-
-    # Creates dictionary for user liquor data (like status)
     if not check_dict(ctx, user_liquor_data):
         user_liquor_data.update({user: dict()})
 
-    # Updates product data 'Icon' vlue
-    status_updater(ctx, ':regional_indicator_f:', 'Found', product_codes)
-    # Updates embed with new status
+    for code in product_codes:
+        try: user_liquor_data[user][code].update({'Icon': icon, 'Status': status, 'Code': code})
+        except: user_liquor_data[user][code] = {'Icon': icon, 'Status': status, 'Code': code}
+
+@bot.command(aliases=['f'])
+async def found(ctx, *product_codes):
+    """Update box status to shelved."""
+
+    product_codes = await check_use_ac(ctx, product_codes)
+    await status_updater(ctx, ':regional_indicator_f:', 'Found', product_codes)
     await ctx.send(f"Found: {format(product_codes)}")
     lprint(ctx, f"Found: {format(product_codes)}")
 
-@bot.command(aliases=['s', 'S', 'Shelved'])
+@bot.command(aliases=['s'])
 async def shelved(ctx, *product_codes):
-    global user_liquor_data
+    """Update box status to shelved."""
 
-    user = ctx.message.author.name
     product_codes = await check_use_ac(ctx, product_codes)
-
-    if not check_dict(ctx, user_liquor_data):
-        user_liquor_data.update({user: dict()})
-
-    status_updater(ctx, ':regional_indicator_s:', 'Shelved', product_codes)
+    await status_updater(ctx, ':regional_indicator_s:', 'Shelved', product_codes)
     await ctx.send(f"Shelved: {format(product_codes)}")
     lprint(ctx, f"Shelved: {format(product_codes)}")
 
-# ===== Active Codes
-@bot.command(aliases=['match', 'Match', 'm', 'M'])
+# ===== Saved Codes
+@bot.command(aliases=['codes', 'c'])
+async def codeget(ctx, group=''):
+    """Fetches current saved codes."""
+
+    user = ctx.message.author.name
+    if not check_dict(ctx, user_active_codes):
+        await ctx.send("No saved codes")
+        return
+
+    # Get specified number group
+    list_index = 0
+    try: list_index = int(group) * 5 - 5
+    except: pass
+
+    # Prints out all user_active_codes in groups of 5 or just a specific group.
+    text, counter = '', 0
+    for i in user_active_codes[user][list_index:list_index + 5 if list_index else len(user_active_codes[user])]:
+        if group and counter % 5 == 0: text += f"**Group {group}** -----\n"
+        elif counter == 0: text += '**Group 1** ----------------\n'
+        elif counter % 5 == 0 and counter > 1:
+            text += f'**{(counter / 5) + 1:.0f}** ----------\n'
+        counter += 1
+
+        status = ''
+        try: status = user_liquor_data[user][i]['Status']
+        except: pass
+        text += f'{i} {status}\n'
+
+    await ctx.send(f"**Saved Codes:**\n{text}")
+    await ctx.send("----------END----------")
+    lprint(ctx, 'Fetched saved codes')
+
+@bot.command(aliases=['match'])
 async def codematch(ctx, *product_codes):
     """Checks if codes are in user_active_codes."""
 
@@ -276,40 +301,41 @@ async def codematch(ctx, *product_codes):
             # Will show what group the match was in
             await ctx.send(f"Match in group {user_active_codes[ctx.message.author.name].index(i) / 5 + 1:.0f}: {i}")
 
-@bot.command(aliases=['Add', 'add', 'a', 'A'])
+@bot.command(aliases=['add', 'a'])
 async def codeadd(ctx, *product_codes):
     """Add codes to user_active_codes."""
 
     product_codes = remove_dupes(product_codes)
     global user_active_codes
 
+    user = ctx.message.author.name
     # So each user can have their own set of codes.
-    if ctx.message.author.name not in user_active_codes:
-        user_active_codes[ctx.message.author.name] = []
+    if user not in user_active_codes:
+        user_active_codes[user] = []
 
+    # Makes sure all codes are numbers and removes duplicate codes.
     try:
         new_codes = []
         for i in product_codes:
-            # Makes sure no duplicate codes.
-            if i not in user_active_codes[ctx.message.author.name]:
+            if i not in user_active_codes[user]:
                 new_codes.append(str(int(i)))
-        user_active_codes[ctx.message.author.name].extend(new_codes)
+        user_active_codes[user].extend(new_codes)
     except:
-        await ctx.send("Not all were numbers.")
+        await ctx.send("Not all were usable codes")
         return
 
     await ctx.send(f"Added codes: {format(product_codes)}")
     await ctx.invoke(bot.get_command("codeget"))
     lprint(ctx, f"Code added: {format(product_codes)}")
 
-@bot.command(aliases=['remove', 'Remove', 'r', 'R', 'delete', 'Delete', 'd', 'D'])
+@bot.command(aliases=['remove', 'r'])
 async def coderemove(ctx, *product_codes):
-    """Removes active codes."""
+    """Removes saved codes."""
 
     global user_active_codes
 
     if not check_dict(ctx, user_active_codes):
-        await ctx.send("No active codes")
+        await ctx.send("No saved codes")
         return
 
     product_codes = await check_use_ac(ctx, product_codes)
@@ -325,7 +351,7 @@ async def coderemove(ctx, *product_codes):
     await ctx.send(f"Removed codes: {format(removed_codes)}")
     lprint(ctx, f'Removed codes: {format(product_codes)}')
 
-@bot.command(aliases=['Clear', 'clear', 'cc', 'Cc', 'CC', 'reset', 'Reset'])
+@bot.command(aliases=['clear', 'cc'])
 async def codeclear(ctx, *args):
     """Clears user_active_codes."""
 
@@ -336,40 +362,9 @@ async def codeclear(ctx, *args):
     user_liquor_data.clear()
     try: user_active_codes[ctx.message.author.name].clear()
     except: pass
-    await ctx.send("Cleared active codes")
+    await ctx.send("Cleared saved codes")
     lprint(ctx, 'Cleared codes')
 
-@bot.command(aliases=['codes', 'Codes', 'c', 'C'])
-async def codeget(ctx, group=''):
-    """Fetches current active codes."""
-
-    user = ctx.message.author.name
-    if not check_dict(ctx, user_active_codes):
-        await ctx.send("No active codes")
-        return
-
-    # Get specified number group
-    list_index = 0
-    try: list_index = int(group) * 5 - 5
-    except: pass
-
-    # Prints out all user_active_codes in groups of 5 or just a specific group.
-    text, counter = '', 0
-    for i in user_active_codes[user][list_index:list_index + 5 if list_index else len(user_active_codes[user])]:
-        if group and counter % 5 == 0: text += f"**Group {group}** -----\n"
-        elif counter == 0: text += '**Group 1** ----------\n'
-        elif counter % 5 == 0 and counter > 1:
-            text += f'**{(counter / 5) + 1:.0f}** ----------\n'
-        counter += 1
-
-        status = ''
-        try: status = user_liquor_data[user][i]['Status']
-        except: pass
-        text += f'{i} {status}\n'
-
-    await ctx.send(f"**Active Codes:**\n{text}")
-    await ctx.send("----------END----------")
-    lprint(ctx, 'Fetched active codes')
 
 # ===== Photo
 def get_photos(code):
@@ -377,12 +372,16 @@ def get_photos(code):
 
     files = []
     for i in os.listdir(box_photos_path):
-        if i.startswith(code):
+        i_code = i.split('.')[0]
+        # Gets code from filenames like 7221-9.jpg
+        try: i_code = i_code.split('-')[0]
+        except: pass
+        if i_code == code:
             files.append(i)
 
     return files
 
-@bot.command(aliases=['box', 'Box', 'b', 'B', 'photo', 'Photo', 'picture', 'Picture', 'p', 'P'])
+@bot.command(aliases=['box', 'b', 'photo', 'p'])
 async def boxphoto(ctx, *product_codes):
     """Gets photo of liquor box from code."""
 
@@ -427,10 +426,10 @@ async def boxphoto(ctx, *product_codes):
                 await create_embed(product, filename, multiple=True)
         else: await create_embed(product, filenames[0])
 
+    await ctx.send("**Finished**")
     lprint(ctx, f'Fetched inventory+photo: {format(product_codes)}')
-    await ctx.send("Finished")
 
-@bot.command(aliases=['bp', 'Bp'])
+@bot.command(aliases=['bp'])
 async def boxphotoonly(ctx, *product_codes):
     """Fetches image of box from product_codes if exists."""
 
@@ -448,49 +447,50 @@ async def boxphotoonly(ctx, *product_codes):
 
     # Prints out codes that had no corresponding images.
     if no_matches: await ctx.send(f"No images for: {format(no_matches)}")
-    await ctx.send("Finished")
+    else: await ctx.send("**Finished**")
+    lprint(ctx, f"Fetched box photo: {format(product_codes)}")
 
-@bot.command(aliases=['Boxupload', 'boxupload', 'bu', 'Bu', 'upload', 'Upload', 'u', 'U'])
+@bot.command(aliases=['boxupload', 'bu', 'upload', 'u'])
 async def boxphotoupload(ctx, product_codes):
     """Upload new photo of box and set filename."""
 
-    product_codes = check_codes_usable([product_codes])[0]
-    if not product_codes:
-        await ctx.send("Please try again with corresponding product code")
+    # Check if code is a number and message has attachment
+    product_codes = check_codes_usable([product_codes])
+    if not ctx.message.attachments or not product_codes:
+        await ctx.send("Please try command again with code and attached photo.")
         return
+    else: product_codes = product_codes[0]
 
-    # No duplicate filenames
+    # Makes sure no duplicate filenames
     new_filename = f"{product_codes}-{random.randint(1, 10)}.jpg"
     for i in range(100):
         if os.path.isfile(f"{box_photos_path}/{new_filename}"):
             new_filename = f'{product_codes}-{random.randint(1, 10)}.jpg'
     file_path = f'{box_photos_path}/{new_filename}'
 
-    # Saves with code as filename. e.g. 7221.jpg
+    # Saves with code as filename. e.g. 7221-6.jpg
     for attachment in ctx.message.attachments:
         await attachment.save(file_path)
-
     # Rescales photo by 50%.
     image_rescale.rescale(file_path, 50)
 
-    
     await ctx.send(f"New upload: {new_filename}")
     lprint(ctx, f"New box photo: {new_filename}")
     await ctx.invoke(bot.get_command("boxphoto"), product_codes)
 
-@bot.command(aliases=['boxrename', 'Boxrename', 'br', 'Br', 'rename', 'Rename'])
+@bot.command(aliases=['boxrename', 'br', 'rename'])
 async def boxphotorename(ctx, product_codes, new_code):
     """Rename photo."""
 
     # E.g. rename 7222 7221
     try: os.rename(f"{box_photos_path}/{product_codes}.jpg", f"{box_photos_path}/{new_code}.jpg")
     except:
-        await ctx.send("Error renaming image.")
+        await ctx.send("Error renaming photo.")
         return
     await ctx.send(f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
     lprint(ctx, f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
 
-@bot.command(aliases=['bd', 'Bd', 'bpd', 'Bpd'])
+@bot.command(aliases=['bd', 'bpd'])
 async def boxphotodelete(ctx, photo_name):
     """Moves photo to liquor_boxes_deleted folder."""
 
@@ -503,60 +503,56 @@ async def boxphotodelete(ctx, photo_name):
 
 @bot.command(hidden=True, aliases=['pd'])
 async def photodupes(ctx):
+    """If code has more than 1 corresponding photo, will be moved to another folder for review."""
 
-    files, have_multiple = [], []
+    files, have_multiple = [], set()
     for i in os.listdir(box_photos_path):
         files.append(i)
 
     # Checks if there's multiple photos of same product (not duplicate files)
     for i in files:
-        counter = 0
+        i = i.split('.')[0]
         try: i = i.split('-')[0]
-        except: i = i.split('.jpg')[0]
-        for j in files:
-            # In case of files like 7221-4.jpg
-            if j.startswith(i): counter += 1
-        if counter > 1:
-            have_multiple.append(i)
-            for file in get_photos(i):
-                os.rename(f"{box_photos_path}/{file}", f"/home/0n1udra/Pictures/dupes/{file}")
+        except: pass
+        if len(get_photos(i)) > 1:
+            have_multiple.add(i)
+            os.rename(f"{box_photos_path}/{file}", f"/home/0n1udra/Pictures/dupes/{file}")
 
-    await ctx.send(format(have_multiple))
-    await ctx.send(f"Files moved: {format(have_multiple)}")
+    if not have_multiple:
+        await ctx.send("No duplicates found")
+    else: await ctx.send(f"Files moved: {format(have_multiple)}")
+    lprint(ctx, "Checked for duplicates")
 
 # ===== Extra
-@bot.command(aliases=['?', 'alias', 'shortcuts'])
-async def commands(ctx):
+@bot.command(aliases=['help', '?', 'alias', 'shortcuts'])
+async def commands(ctx, *args):
     """Custom help page."""
 
-    await ctx.send("""```
-Command     - Description, example
-c, codes    - Show current active codes
+    commands = [
+    ['Recommend using bot in Direct Messages', 'Use `dm` command to have bot send you a private message.', 'So no confusion/conflicts when multiple people are using the bot. (Unless you want to share with the class, feel free too)'],
+    ['Saving product codes', 'Save/remove codes with `add`/`remove` commands. Use `codes` to see all saved codes (in groups of 5).', '`a 7221` (Save code), `r c 1` (Remove group 1 codes), `c 1` (Show group 1)'],
+    ['Using saved codes for commands', 'Some commands can use saved codes (or a group).', '`i c` (Get info for all saved codes), `b c 1` (Get info + box photo for group 1)'],
+    ['Shortcut, Command', 'Description.', 'Usage examples'],
+    ['c, codes', 'Show current codes saved.', '`c`, `c 1`'],
+    ['a, add / r, remove / cc, clear', 'Add/remove/clear saved codes.', '`a 7221 6214`, `r c 1`, `cc`'],
+    ['m, match', 'Check if in saved codes.', '`m 7221 6660`'],
+    ['i, info, inventory', 'Show inventory info for codes (name, how many on-hand, etc).', '`i 7221 6660`, `i c`'],
+    ['f, found & s, shelved', 'Update box status (found box, shelved product).', '`f 7221`, `s 7221 6660`, `s c 1`'],
+    ['b, box', 'Show inventory info with box photo.', '`b 7221`, `b c 1`'],
+    ['bp, boxphoto', 'Show box photo only', '`bp 7221 6660`, `bp c 1`'],
+    ['bu, u, boxphotoupload', 'Upload box photo for a code. (Only one code and one photo only).', '`u 7221` + attached photo'],
+    ['br, boxphotorename', "Rename photo. (Keep the '-X' portion when renaming. Do NOT include extension e.g. .jpg).", '`br 7222 7221`, `br 6215-9 6214-9`'],
+    ['bd, boxphotodelete', 'Delete photo. (One code only).', '`bd 7221`, `bd 6214-9`'],
+    ['NOTE: Commands are case insensitive', "I.e. capitalization (or even full caps or mixed) does not matter.", '`cc`, `Cc`, `cC`, `CC` (all the same)']
 
-a, add      - Add active codes, a 7221, a 7221 6660 982
+    ]
 
-r, remove   - Remove active codes, r 6660, r 7221 6660
+    embed = discord.Embed(title='Commands')
+    for c in commands: embed.add_field(name=c[0], value=f"{c[1]}\n{c[2]}", inline=False)
+    await ctx.send(embed=embed)
+    lprint(ctx, "Help page")
 
-m, match    - Check if code in active codes, d 7221, d 7221 982
-
-i, inv      - Show inventory data, i 7221, i 7221 6660, i codes, i c
-
-f, found   - Update status, box found, bf 7221, bf 7221 6660, bf c, bf c 2
-
-s, shelved - Update status, product shelved, bs 7221, bs 7221 6660, bs c, bs c 2
-
-b, box      - Show inventory data with photo of boxes, b 7221, b 7221 6660, b c, b c 2
-
-bp          - Show only photo of boxes, bp 7221, bp 7221 6660, bp c 2
-
-bu, upload  - Upload new box image, u 7221
-
-br, rename  - Rename image, re 7222 7221
-
-bd          - Delete photo, bd 7221
-```""")
-
-@bot.command(hidden=True, aliases=['Rbot', 'rbot', 'rebootbot', 'botrestart', 'botreboot'])
+@bot.command(hidden=True, aliases=['rbot'])
 async def restartbot(ctx, now=''):
     """Restart this bot."""
 
@@ -566,7 +562,32 @@ async def restartbot(ctx, now=''):
     os.chdir(bot_path)
     os.execl(sys.executable, sys.executable, *sys.argv)
 
-@bot.command(hidden=True, aliases=['updatebot', 'botupdate', 'git', 'update'])
+@bot.command(hidden=True, aliases=['blog'])
+async def botlog(ctx, lines=5):
+    """Show bot log."""
+
+    if not os.path.isfile(bot_log_file):
+        await ctx.send("**Error:** Problem fetching data. File may be empty or not exist")
+        lprint(ctx, "ERROR: Issue getting bog log data.")
+        return
+
+    line_count = sum(1 for line in open(bot_log_file))
+
+    with FileReadBackwards(bot_log_file) as file:
+        i = total = 0
+        # Stops loop at user set limit, if file has no more lines, or at hard limit (don't let user ask for 999 lines of log).
+        while i < lines and total < line_count and total <= 100:
+            total += 1
+            line = file.readline()
+            try: await ctx.send(f"_({line.split(']', 1)[0][1:]})_ **{line.split(']', 1)[1].split('):', 1)[0][2:]}**: {line.split(']', 1)[1].split('):', 1)[1][1:]}")
+            except: continue
+            if not line.strip(): continue  # Skip blank/newlines.
+            i += 1
+
+    await ctx.send("-----END-----")
+    lprint(ctx, f"Fetched Bot Log: {lines}")
+
+@bot.command(hidden=True)
 async def gitupdate(ctx):
     """Gets update from GitHub."""
 
