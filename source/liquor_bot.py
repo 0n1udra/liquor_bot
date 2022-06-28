@@ -74,6 +74,12 @@ def codes_dupes(input_list):
     return sorted(set(input_list), key=lambda x: input_list.index(x))
 
 # User liquor codes and data
+def user_init(user):
+    """Checks if user has a list in user_liquor_codes."""
+
+    if user not in user_liquor_data: user_liquor_data.update({user: dict()})
+    if user not in user_liquor_codes: user_liquor_codes.update({user: []})
+
 async def ulc_get(ctx, paramters):
     """Get codes or a group from user_liquor_codes if received right parameter."""
 
@@ -96,12 +102,6 @@ async def ulc_get(ctx, paramters):
     else:
         try: return user_liquor_codes[user]
         except: return False
-
-def user_init(user):
-    """Checks if user has a list in user_liquor_codes."""
-
-    if user not in user_liquor_data: user_liquor_data.update({user: dict()})
-    if user not in user_liquor_codes: user_liquor_codes.update({user: []})
 
 def uld_get_icon(user, product_data):
     """Gets 'Icon' value from user_liquor_data and updates product_data."""
@@ -231,12 +231,12 @@ else:
     print("Missing Token File:", token_file)
     sys.exit()
 bot = ComponentsBot(command_prefix=cmd_prefix, case_insensitive=True, help_command=None)
-bot_channel = bot.get_channel(log_channel_id)
 
 
 async def send_log(msg):
     """Send message to bot log channel."""
 
+    bot_channel = bot.get_channel(log_channel_id)
     await bot_channel.send(msg)
 
 @bot.event
@@ -245,6 +245,10 @@ async def on_ready():
     await bot.wait_until_ready()
     bot_channel = bot.get_channel(admin_channel_id)
     await bot_channel.send(primed_msg)
+
+@bot.command()
+async def test(ctx):
+    await send_log('test')
 
 @bot.command(aliases=['setup', 'dm'])
 async def new(ctx, *args):
@@ -529,21 +533,21 @@ async def boxphotoonly(ctx, *product_codes):
     lprint(ctx, f"Fetched box photo: {codes_format(product_codes)}")
 
 @bot.command(aliases=['boxupload', 'bu', 'upload', 'u'])
-async def boxphotoupload(ctx, product_codes):
+async def boxphotoupload(ctx, product_code):
     """Upload new photo of box and set filename."""
 
     # Check if code is a number and message has attachment
-    product_codes = codes_check([product_codes])
-    if not ctx.message.attachments or not product_codes:
+    product_code = codes_check([product_code])
+    if not ctx.message.attachments or not product_code:
         await ctx.send("Please try command again with code and attached photo.")
         return
-    else: product_codes = product_codes[0]
+    else: product_code = product_code[0]
 
-    # Makes sure no duplicate filenames
-    new_filename = f"{product_codes}-{random.randint(1, 10)}.jpg"
+    # Makes sure no duplicate filenames by adding random unused number. e.g. 7221-9.jpg
+    new_filename = f"{product_code}-{random.randint(1, 10)}.jpg"
     for i in range(100):
         if os.path.isfile(f"{box_photos_path}/{new_filename}"):
-            new_filename = f'{product_codes}-{random.randint(1, 10)}.jpg'
+            new_filename = f'{product_code}-{random.randint(1, 10)}.jpg'
     file_path = f'{box_photos_path}/{new_filename}'
 
     # Saves with code as filename. e.g. 7221-6.jpg
@@ -553,8 +557,14 @@ async def boxphotoupload(ctx, product_codes):
     image_rescale.rescale(file_path, 50)
 
     await ctx.send(f"New upload: {new_filename}")
+    await send_log(f"New Box Image: {product_code}")
     lprint(ctx, f"New box photo: {new_filename}")
-    await ctx.invoke(bot.get_command("boxphoto"), product_codes)
+    result = liquor_search(product_code)
+    if result is str:
+        result = result.split(' ')
+        await ctx.send(f"**{result[0]}:** {' '.join(result[1:])}\n")
+
+    await ctx.invoke(bot.get_command("boxphotoonly"), product_code)
 
 @bot.command(aliases=['boxrename', 'br', 'rename'])
 async def boxphotorename(ctx, product_codes, new_code):
@@ -566,6 +576,7 @@ async def boxphotorename(ctx, product_codes, new_code):
         await ctx.send("Error renaming photo.")
         return
     await ctx.send(f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
+    await send_log(f"Box Image Renamed: {product_codes}.jpg > {new_code}.jpg")
     lprint(ctx, f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
 
 @bot.command(aliases=['bd', 'bpd'])
@@ -576,6 +587,7 @@ async def boxphotodelete(ctx, photo_name):
         # os.rename does actually move file.
         os.rename(f"{box_photos_path}/{photo_name}.jpg", f"{box_photos_deleted_path}/{photo_name}.jpg")
         await ctx.send(f"Deleted: {photo_name}")
+        await send_log(f"Deleted Box Image: {photo_name}")
         lprint(ctx, f"Deleted: {photo_name}")
     except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
 
