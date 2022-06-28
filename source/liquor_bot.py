@@ -17,6 +17,7 @@ box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 log_channel_id = 991448938399928421
+admin_channel_id = 991450998847578224
 ctx = "liquor_bot.py"  # For logging
 
 data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered', 'QueryText']
@@ -222,18 +223,19 @@ else:
     print("Missing Token File:", token_file)
     sys.exit()
 bot = ComponentsBot(command_prefix='', case_insensitive=True, help_command=None)
+bot_channel = bot.get_channel(log_channel_id)
+
 
 async def send_log(msg):
     """Send message to bot log channel."""
 
-    bot_channel = bot.get_channel(log_channel_id)
     await bot_channel.send(msg)
 
 @bot.event
 async def on_ready():
     lprint(ctx, "Bot Connected")
     await bot.wait_until_ready()
-    bot_channel = bot.get_channel(log_channel_id)
+    bot_channel = bot.get_channel(admin_channel_id)
     await bot_channel.send(f':white_check_mark: **Bot PRIMED** {datetime.datetime.now().strftime("%X")}')
 
 @bot.command(aliases=['setup', 'dm'])
