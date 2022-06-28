@@ -12,7 +12,7 @@ __status__ = "Development"
 
 # ========== Variable & Funcs
 bot_path = os.path.dirname(os.path.abspath(__file__))
-bot_log_file = bot_path + '/beta_liquor_log.txt'
+bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
 token_file = f'{os.getenv("HOME")}/keys/beta_liquor_bot.token'
@@ -91,6 +91,18 @@ async def check_use_ac(ctx, paramters):
     else:
         try: return user_active_codes[user]
         except: return False
+
+def get_icon_data(ctx, product_data):
+    """Gets 'Icon' value from user_liquor_data and updates product_data."""
+
+    if not product_data: return False
+    product_data = product_data
+    for i in product_data:
+        for k, v in i.items():
+            if 'Icon' in k:
+                try: i['Icon'] = user_liquor_data[ctx.message.author.name][i['Code']]['Icon']
+                except: pass
+    return product_data
 
 # ===== Web Scraper
 def get_soup(site_url):
@@ -194,10 +206,11 @@ async def inventorycheck(ctx, *product_codes):
 
     global user_liquor_data
 
+    await ctx.send(f"***Checking Inventory Data...***")
     user = ctx.message.author.name
+    # Parses and updates product data for embed
     product_codes = await check_use_ac(ctx, product_codes)
-    await ctx.send(f"***Checking Inventory...***")
-    product_data = get_product_data(product_codes, user)
+    product_data = get_icon_data(ctx, get_product_data(product_codes, user))
 
     if not product_data:
         await ctx.send("No inventory data available.")
@@ -246,6 +259,8 @@ async def found(ctx, *product_codes):
     """Update box status to shelved."""
 
     product_codes = await check_use_ac(ctx, product_codes)
+    if not product_codes: return False
+
     await status_updater(ctx, ':regional_indicator_f:', 'Found', product_codes)
     await ctx.send(f"Found: {format(product_codes)}")
     lprint(ctx, f"Found: {format(product_codes)}")
@@ -255,6 +270,7 @@ async def shelved(ctx, *product_codes):
     """Update box status to shelved."""
 
     product_codes = await check_use_ac(ctx, product_codes)
+    if not product_codes: return False
     await status_updater(ctx, ':regional_indicator_s:', 'Shelved', product_codes)
     await ctx.send(f"Shelved: {format(product_codes)}")
     lprint(ctx, f"Shelved: {format(product_codes)}")
@@ -339,6 +355,7 @@ async def coderemove(ctx, *product_codes):
         return
 
     product_codes = await check_use_ac(ctx, product_codes)
+    if not product_codes: return False
     removed_codes, new_codes = [], []
     for i in user_active_codes[ctx.message.author.name]:
         # Skips adding code to user_active_codes if matched code that needs to be removed.
@@ -385,10 +402,11 @@ def get_photos(code):
 async def boxphoto(ctx, *product_codes):
     """Gets photo of liquor box from code."""
 
-    product_codes = await check_use_ac(ctx, product_codes)
-    await ctx.send(f"***Checking Inventory and Fetching Images...***")
-    product_data = get_product_data(product_codes)
+    await ctx.send(f"***Checking Inventory Data and Fetching Images...***")
 
+    # Parses and updates product data for embed
+    product_codes = await check_use_ac(ctx, product_codes)
+    product_data = get_icon_data(ctx, get_product_data(product_codes))
     if not product_data:
         await ctx.send("No inventory data available. Double check all codes.")
         return False
@@ -434,6 +452,7 @@ async def boxphotoonly(ctx, *product_codes):
     """Fetches image of box from product_codes if exists."""
 
     product_codes = await check_use_ac(ctx, product_codes)
+    if not product_codes: return False
     files, no_matches = [], []
     for i in product_codes:
         if filenames := get_photos(i):  # Returns list if files found
@@ -544,7 +563,6 @@ async def commands(ctx, *args):
     ['br, boxphotorename', "Rename photo. (Keep the '-X' portion when renaming. Do NOT include extension e.g. .jpg).", '`br 7222 7221`, `br 6215-9 6214-9`'],
     ['bd, boxphotodelete', 'Delete photo. (One code only).', '`bd 7221`, `bd 6214-9`'],
     ['NOTE: Commands are case insensitive', "I.e. capitalization (or even full caps or mixed) does not matter.", '`cc`, `Cc`, `cC`, `CC` (all the same)']
-
     ]
 
     embed = discord.Embed(title='Commands')
