@@ -15,10 +15,18 @@ bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
-token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
 log_channel_id = 991448938399928421
 admin_channel_id = 991450998847578224
 ctx = "liquor_bot.py"  # For logging
+# Depending on which git branch. Beta bot gets prefix.
+if not os.system("git branch | grep '* main'"):
+    token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
+    primed_msg = f':white_check_mark: **BOT PRIMED** {datetime.datetime.now().strftime("%X")}'
+    cmd_prefix = ''
+else:
+    cmd_prefix = '.'
+    primed_msg = f':white_check_mark: **BETA BOT PRIMED** {datetime.datetime.now().strftime("%X")}'
+    token_file = f'{os.getenv("HOME")}/keys/beta_liquor_bot.token'
 
 data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered', 'QueryText']
 data_dict = {k:'N/A' for k in data_points}
@@ -222,7 +230,7 @@ if os.path.isfile(token_file):
 else:
     print("Missing Token File:", token_file)
     sys.exit()
-bot = ComponentsBot(command_prefix='', case_insensitive=True, help_command=None)
+bot = ComponentsBot(command_prefix=cmd_prefix, case_insensitive=True, help_command=None)
 bot_channel = bot.get_channel(log_channel_id)
 
 
@@ -236,7 +244,7 @@ async def on_ready():
     lprint(ctx, "Bot Connected")
     await bot.wait_until_ready()
     bot_channel = bot.get_channel(admin_channel_id)
-    await bot_channel.send(f':white_check_mark: **Bot PRIMED** {datetime.datetime.now().strftime("%X")}')
+    await bot_channel.send(primed_msg)
 
 @bot.command(aliases=['setup', 'dm'])
 async def new(ctx, *args):
