@@ -332,11 +332,11 @@ async def codeget(ctx, group=''):
 
     # Prints out all user_liquor_codes in groups of 5 or just a specific group.
     text, counter = '', 0
-    for i in user_liquor_codes[user][list_index:list_index + 5 if list_index else len(user_liquor_codes[user])]:
+    for i in user_liquor_codes[user][list_index:list_index + 5 if group else len(user_liquor_codes[user])]:
         if group and counter % 5 == 0:
-            text += f"**Group {group}** -----\n"
+            text += f"**Group {group}** ---------------\n"
         elif counter == 0:
-            text += '**Group 1** ----------------\n'
+            text += '**Group 1** --------------\n'
         elif counter % 5 == 0 and counter > 1:
             text += f'**{(counter / 5) + 1:.0f}** ----------\n'
         counter += 1
