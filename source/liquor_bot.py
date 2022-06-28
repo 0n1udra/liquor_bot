@@ -15,8 +15,8 @@ bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
-token_file = f'{os.getenv("HOME")}/keys/beta_liquor_bot.token'
-bot_channel_id = 991095966700548147
+token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
+bot_channel_id = 988549339808952371
 ctx = "liquor_bot.py"  # For logging
 
 data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered', 'QueryText']
