@@ -604,7 +604,8 @@ async def commands(ctx, *args):
     ['bu, u, boxphotoupload', 'Upload box photo for a code. (Only one code and one photo only).', '`u 7221` + attached photo'],
     ['br, boxphotorename', "Rename photo. (Keep the '-X' portion when renaming. Do NOT include extension e.g. .jpg).", '`br 7222 7221`, `br 6215-9 6214-9`'],
     ['bd, boxphotodelete', 'Delete photo. (One code only).', '`bd 7221`, `bd 6214-9`'],
-    ['NOTE: Commands are case insensitive', "I.e. capitalization (or even full caps or mixed) does not matter.", '`cc`, `Cc`, `cC`, `CC` (all the same)']
+    ['NOTE: Commands are case insensitive', "I.e. capitalization (or even full caps or mixed) does not matter.", '`cc`, `Cc`, `cC`, `CC` (all the same)'],
+    ['Icon Meanings', ':white_check_mark: On-hand | :x: Not on-hand | :question: Unknown\n:regional_indicator_f: Box found | :regional_indicator_s: Shelved', '']
     ]
 
     embed = discord.Embed(title='Commands')
