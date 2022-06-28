@@ -16,7 +16,7 @@ bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
 token_file = f'{os.getenv("HOME")}/keys/liquor_bot.token'
-bot_channel_id = 988549339808952371
+log_channel_id = 988549339808952371
 ctx = "liquor_bot.py"  # For logging
 
 data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered', 'QueryText']
@@ -223,11 +223,17 @@ else:
     sys.exit()
 bot = ComponentsBot(command_prefix='', case_insensitive=True, help_command=None)
 
+async def send_log(msg):
+    """Send message to bot log channel."""
+
+    bot_channel = bot.get_channel(log_channel_id)
+    await bot_channel.send(msg)
+
 @bot.event
 async def on_ready():
     lprint(ctx, "Bot Connected")
     await bot.wait_until_ready()
-    bot_channel = bot.get_channel(bot_channel_id)
+    bot_channel = bot.get_channel(log_channel_id)
     await bot_channel.send(f':white_check_mark: **Bot PRIMED** {datetime.datetime.now().strftime("%X")}')
 
 @bot.command(aliases=['setup', 'dm'])
@@ -235,6 +241,7 @@ async def new(ctx, *args):
     """Send message to user."""
 
     await ctx.message.author.send("Hello! Use `help` command for more info.")
+    await ctx.send("Message sent to DM.")
     lprint(ctx, f"Sent DM: {ctx.message.author.name}")
 
 @bot.command(aliases=['info', 'inv', 'inventory', 'i'])
@@ -267,9 +274,10 @@ async def queryproducts(ctx, *keywords):
 
     try: amount = int(keywords[0])
     except: amount = 25
+    await ctx.send(f"***Searching:** *{' '.join(keywords)}*")
     results = (liquor_search(' '.join(keywords)))
     if not results:
-        await ctx.send("No results found")
+        await ctx.send("No results found.")
         return
 
     results = ''
@@ -322,7 +330,7 @@ async def codeget(ctx, group=''):
     user = user_get(ctx)
     user_init(user)
     if not user_liquor_codes[user]:
-        await ctx.send("No saved codes")
+        await ctx.send("No saved codes.")
         return
 
     # Get specified number group
@@ -380,7 +388,7 @@ async def codeadd(ctx, *product_codes):
         # Adds to user saved list
         user_liquor_codes[user].extend(new_codes)
     except:
-        await ctx.send("Not all were usable codes")
+        await ctx.send("Not all were usable codes.")
         return
 
     # Updates user_liquor_data with data form web scraper
@@ -398,7 +406,7 @@ async def coderemove(ctx, *product_codes):
     user = user_get(ctx)
     user_init(user)
     if not user_liquor_codes[user]:
-        await ctx.send("No saved codes")
+        await ctx.send("No saved codes.")
         return
 
     product_codes = await ulc_get(ctx, product_codes)
@@ -420,7 +428,7 @@ async def codeclear(ctx, *args):
     user = user_get(ctx)
     user_liquor_data[user].clear()
     user_liquor_codes[user].clear()
-    await ctx.send("Cleared saved codes")
+    await ctx.send("Cleared all saved codes.")
     lprint(ctx, 'Cleared codes')
 
 # ===== Photo
@@ -485,7 +493,7 @@ async def boxphoto(ctx, *product_codes):
                 await create_embed(product, filename, multiple=True)
         else: await create_embed(product, filenames[0])
 
-    await ctx.send("**Finished**")
+    await ctx.send("**Finished.**")
     lprint(ctx, f'Fetched inventory+photo: {codes_format(product_codes)}')
 
 @bot.command(aliases=['bp'])
@@ -507,7 +515,7 @@ async def boxphotoonly(ctx, *product_codes):
 
     # Prints out codes that had no corresponding images.
     if no_matches: await ctx.send(f"No images for: {codes_format(no_matches)}")
-    else: await ctx.send("**Finished**")
+    else: await ctx.send("**Finished.**")
     lprint(ctx, f"Fetched box photo: {codes_format(product_codes)}")
 
 @bot.command(aliases=['boxupload', 'bu', 'upload', 'u'])
@@ -579,7 +587,7 @@ async def photodupes(ctx):
             os.rename(f"{box_photos_path}/{file}", f"/home/0n1udra/Pictures/dupes/{file}")
 
     if not have_multiple:
-        await ctx.send("No duplicates found")
+        await ctx.send("No duplicates found.")
     else: await ctx.send(f"Files moved: {codes_format(have_multiple)}")
     lprint(ctx, "Checked for duplicates")
 
@@ -628,7 +636,7 @@ async def botlog(ctx, lines=5):
     """Show bot log."""
 
     if not os.path.isfile(bot_log_file):
-        await ctx.send("**Error:** Problem fetching data. File may be empty or not exist")
+        await ctx.send("**Error:** Problem fetching data. File may be empty or not exist.")
         lprint(ctx, "ERROR: Issue getting bog log data.")
         return
 
