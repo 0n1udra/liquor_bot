@@ -292,7 +292,7 @@ async def queryproducts(ctx, *keywords):
 
     try: amount = int(keywords[0])
     except: amount = 25
-    await ctx.send(f"***Searching:** *{' '.join(keywords)}*")
+    await ctx.send(f"***Searching:*** *{' '.join(keywords)}*")
     results = (liquor_search(' '.join(keywords)))
     if not results:
         await ctx.send("No results found.")
