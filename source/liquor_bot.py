@@ -606,13 +606,16 @@ async def photodupes(ctx):
         files.append(i)
 
     # Checks if there's multiple photos of same product (not duplicate files)
-    for i in files:
-        i = i.split('.')[0]
-        try: i = i.split('-')[0]
+    for file in files:
+        i = file.split('.')[0]
+        try: i = file.split('-')[0]
         except: pass
-        if len(get_photos(i)) > 1:
+        # Gets all files associated with code
+        found_files = get_photos(i)
+        if len(found_files) > 1:  # If found multiple files
             have_multiple.add(i)
-            os.rename(f"{box_photos_path}/{file}", f"/home/0n1udra/Pictures/dupes/{file}")
+            for f in found_files:  # Moves files to dupes folder
+                os.rename(f"{box_photos_path}/{f}", f"/home/0n1udra/Pictures/dupes/{f}")
 
     if not have_multiple:
         await ctx.send("No duplicates found.")
