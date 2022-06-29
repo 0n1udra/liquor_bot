@@ -1,5 +1,6 @@
 import image_rescale, datetime, requests, discord, random, sys, os
 from discord_components import DiscordComponents, Button, ButtonStyle,  Select, SelectOption, ComponentsBot
+from discord.ext.commands import CommandNotFound
 from file_read_backwards import FileReadBackwards
 from bs4 import BeautifulSoup
 
@@ -15,7 +16,8 @@ bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
-log_channel_id = 991448938399928421
+log_channel_id = 991450998847578224
+#log_channel_id = 991448938399928421
 admin_channel_id = 991450998847578224
 ctx = "liquor_bot.py"  # For logging
 # Depending on which git branch. Beta bot gets prefix.
@@ -245,10 +247,12 @@ async def on_ready():
     await bot.wait_until_ready()
     bot_channel = bot.get_channel(admin_channel_id)
     await bot_channel.send(primed_msg)
-
-@bot.command()
-async def test(ctx):
-    await send_log('test')
+    
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        return
+    raise error
 
 @bot.command(aliases=['setup', 'dm'])
 async def new(ctx, *args):
@@ -560,7 +564,7 @@ async def boxphotoupload(ctx, product_code):
     await send_log(f"New Box Image: {product_code}")
     lprint(ctx, f"New box photo: {new_filename}")
     result = liquor_search(product_code)
-    if result is str:
+    if result:
         result = result.split(' ')
         await ctx.send(f"**{result[0]}:** {' '.join(result[1:])}\n")
 
