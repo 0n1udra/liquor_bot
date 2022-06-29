@@ -529,7 +529,7 @@ async def boxphotoonly(ctx, *product_codes):
     for filename in files:
         try: file = discord.File(f"{box_photos_path}/{filename}", filename=f"{filename}")
         except: pass
-        else: await ctx.send(f'{filename[:-4]}', file=file)
+        else: await ctx.send(f'{filename.split(".")[0]}', file=file)
 
     # Prints out codes that had no corresponding images.
     if no_matches: await ctx.send(f"No images for: {codes_format(no_matches)}")
@@ -560,8 +560,9 @@ async def boxphotoupload(ctx, product_code):
     # Rescales photo by 50%.
     image_rescale.rescale(file_path, 50)
 
-    await ctx.send(f"New upload: {new_filename}")
-    await send_log(f"New Box Image: {product_code}")
+    text = f"New image: {new_filename.split('.')[0]}"
+    await ctx.send(text)
+    await send_log(text)
     lprint(ctx, f"New box photo: {new_filename}")
 
     # Gets product code name
@@ -569,8 +570,6 @@ async def boxphotoupload(ctx, product_code):
     if result:
         result = result[0].split(' ')
         await ctx.send(f"**{result[0]}:** {' '.join(result[1:])}\n")
-
-    await ctx.invoke(bot.get_command("boxphotoonly"), product_code)
 
 @bot.command(aliases=['boxrename', 'br', 'rename'])
 async def boxphotorename(ctx, product_codes, new_code):
@@ -581,8 +580,9 @@ async def boxphotorename(ctx, product_codes, new_code):
     except:
         await ctx.send("Error renaming photo.")
         return
-    await ctx.send(f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
-    await send_log(f"Box Image Renamed: {product_codes}.jpg > {new_code}.jpg")
+    text = f"Image renamed: {product_codes}.jpg > {new_code}.jpg"
+    await ctx.send(text)
+    await send_log(text)
     lprint(ctx, f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
 
 @bot.command(aliases=['bd', 'bpd'])
@@ -593,8 +593,9 @@ async def boxphotodelete(ctx, photo_name):
     try: os.rename(f"{box_photos_path}/{photo_name}.jpg", f"{box_photos_deleted_path}/{photo_name}.jpg")
     except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
     else:
-        await ctx.send(f"Deleted: {photo_name}")
-        await send_log(f"Deleted Box Image: {photo_name}")
+        text = f"Deleted image: {photo_name}"
+        await ctx.send(text)
+        await send_log(text)
         lprint(ctx, f"Deleted: {photo_name}")
 
 @bot.command(hidden=True, aliases=['pd'])
