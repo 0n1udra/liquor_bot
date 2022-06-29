@@ -349,7 +349,7 @@ async def shelved(ctx, *product_codes):
 @bot.command(aliases=['reset', 'r'])
 async def statusreset(ctx, *product_codes):
     """Resets shelved/found status for product."""
-    
+
     user = user_get(ctx)
     user_init(user)
     product_codes = await ulc_get(ctx, product_codes)
@@ -652,12 +652,12 @@ async def commands(ctx, *args):
 
     commands = [
     ['Recommend using bot in Direct Messages', 'Use `dm` command to have bot send you a private message.', 'So no confusion/conflicts when multiple people are using the bot. (Unless you want to share with the class, feel free too)'],
-    ['Saving product codes', 'Save/delete codes with `add`/`delete` commands. Use `codes` to see all saved codes (in groups of 5).', '`a 7221` (Save code), `r c 1` (Deletes group 1 codes), `c 1` (Show group 1)'],
+    ['Saving product codes', 'Save/delete codes with `add`/`delete` commands. Use `codes` to see all saved codes (in groups of 5).', '`a 7221` (Save code), `d c 1` (Deletes group 1 codes), `c 1` (Show group 1)'],
     ['Using saved codes for commands', 'Some commands can use saved codes (or a group).', '`i c` (Get info for all saved codes), `b c 1` (Get info + box photo for group 1)'],
     ['Shortcut, Command', 'Description.', 'Usage examples'],
     ['q, query, search', 'Search product by keyword or code, return list of best matches', '`q 6509`, `q new amsterdam watermelon`'],
     ['c, codes', 'Show current codes saved.', '`c`, `c 1`'],
-    ['a, add / d, delete / cc, clear', 'Add/delete/clear saved codes.', '`a 7221 6214`, `r c 1`, `cc`'],
+    ['a, add / d, delete / cc, clear', 'Add/delete/clear saved codes.', '`a 7221 6214`, `d c 1`, `cc`'],
     ['d, reset', 'Resets shelved/found status for codes.', '`r 7221`, `r c 1` (resets group 1 codes), `r` (resets all)'],
     ['m, match', 'Check if in saved codes.', '`m 7221 6660`'],
     ['i, info, inventory', 'Show inventory info for codes (name, how many on-hand, etc).', '`i 7221 6660`, `i c`'],
