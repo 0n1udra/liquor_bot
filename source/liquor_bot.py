@@ -16,8 +16,7 @@ bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
-log_channel_id = 991450998847578224
-#log_channel_id = 991448938399928421
+log_channel_id = 991448938399928421
 admin_channel_id = 991450998847578224
 ctx = "liquor_bot.py"  # For logging
 # Depending on which git branch. Beta bot gets prefix.
