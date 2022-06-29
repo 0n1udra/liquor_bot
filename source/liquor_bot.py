@@ -238,7 +238,8 @@ async def send_log(msg):
     """Send message to bot log channel."""
 
     bot_channel = bot.get_channel(log_channel_id)
-    await bot_channel.send(msg)
+    try: await bot_channel.send(msg)
+    except: pass
 
 @bot.event
 async def on_ready():
@@ -562,9 +563,11 @@ async def boxphotoupload(ctx, product_code):
     await ctx.send(f"New upload: {new_filename}")
     await send_log(f"New Box Image: {product_code}")
     lprint(ctx, f"New box photo: {new_filename}")
+
+    # Gets product code name
     result = liquor_search(product_code)
     if result:
-        result = result.split(' ')
+        result = result[0].split(' ')
         await ctx.send(f"**{result[0]}:** {' '.join(result[1:])}\n")
 
     await ctx.invoke(bot.get_command("boxphotoonly"), product_code)
@@ -586,13 +589,13 @@ async def boxphotorename(ctx, product_codes, new_code):
 async def boxphotodelete(ctx, photo_name):
     """Moves photo to liquor_boxes_deleted folder."""
 
-    try:
-        # os.rename does actually move file.
-        os.rename(f"{box_photos_path}/{photo_name}.jpg", f"{box_photos_deleted_path}/{photo_name}.jpg")
+    # os.rename does actually move file.
+    try: os.rename(f"{box_photos_path}/{photo_name}.jpg", f"{box_photos_deleted_path}/{photo_name}.jpg")
+    except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
+    else:
         await ctx.send(f"Deleted: {photo_name}")
         await send_log(f"Deleted Box Image: {photo_name}")
         lprint(ctx, f"Deleted: {photo_name}")
-    except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
 
 @bot.command(hidden=True, aliases=['pd'])
 async def photodupes(ctx):
