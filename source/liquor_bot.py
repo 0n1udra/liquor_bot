@@ -184,9 +184,13 @@ def liquor_parser(product_code, user=None):
                             return_data['Inventory'] = td_data[1].text.strip()
                             return_data['Ordered'] = td_data[2].text.strip()
 
+    except: pass
+
+    # Updates icon (shows if have on-hand, product not exist, found, shelved, etc).
+    try:
         if int(return_data['Inventory']) / int(return_data['Pack']) >= 1: return_data['Icon'] = ':white_check_mark:'
         else: return_data['Icon'] = ':x:'
-    except: pass
+    except: return_data['Icon'] = ':question:'
 
     return return_data
 
@@ -262,8 +266,9 @@ async def new(ctx, *args):
     await ctx.send("Message sent to DM.")
     lprint(ctx, f"Sent DM: {ctx.message.author.name}")
 
+# ===== Liquor data
 @bot.command(aliases=['info', 'inv', 'inventory', 'i'])
-async def inventorycheck(ctx, *product_codes):
+async def liquorfetch(ctx, *product_codes):
     """Gets product data by store code(s)."""
 
     global user_liquor_data
@@ -288,11 +293,12 @@ async def inventorycheck(ctx, *product_codes):
     lprint(ctx, f"Inventory Check: {codes_format(product_codes)}")
 
 @bot.command(aliases=['search', 'query', 'q'])
-async def queryproducts(ctx, *keywords):
+async def liquorquery(ctx, *keywords):
+    """Returns search results for product by keyword or code."""
 
     try: amount = int(keywords[0])
     except: amount = 25
-    await ctx.send(f"***Searching:** *{' '.join(keywords)}*")
+    await ctx.send(f"***Searching:*** *{' '.join(keywords)}*")
     results = (liquor_search(' '.join(keywords)))
     if not results:
         await ctx.send("No results found.")
@@ -339,6 +345,22 @@ async def shelved(ctx, *product_codes):
     await status_updater(ctx, ':regional_indicator_s:', 'Shelved', product_codes)
     await ctx.send(f"Shelved: {codes_format(product_codes)}")
     lprint(ctx, f"Shelved: {codes_format(product_codes)}")
+
+@bot.command(aliases=['reset', 'r'])
+async def statusreset(ctx, *product_codes):
+    """Resets shelved/found status for product."""
+
+    user = user_get(ctx)
+    user_init(user)
+    product_codes = await ulc_get(ctx, product_codes)
+    product_codes = codes_check(product_codes)
+    if not product_codes:
+        product_codes = user_liquor_codes[user]
+
+    await ctx.send(f"***Resetting status for:*** *{codes_format(product_codes)}*...")
+    uld_update(user, product_codes)
+    await ctx.send("Finished.")
+    lprint(ctx, f"Reset status: {codes_format(product_codes)}")
 
 # ===== Saved Codes
 @bot.command(aliases=['codes', 'c'])
@@ -415,9 +437,9 @@ async def codeadd(ctx, *product_codes):
     await ctx.invoke(bot.get_command("codeget"))
     lprint(ctx, f"Code added: {codes_format(product_codes)}")
 
-@bot.command(aliases=['remove', 'r'])
-async def coderemove(ctx, *product_codes):
-    """Removes saved codes."""
+@bot.command(aliases=['delete', 'd'])
+async def coderedelete(ctx, *product_codes):
+    """Deletes saved codes."""
 
     global user_liquor_codes
 
@@ -432,8 +454,8 @@ async def coderemove(ctx, *product_codes):
     if not product_codes: return False
     user_liquor_codes[user] = [i for i in user_liquor_codes[user] if i not in product_codes]
 
-    await ctx.send(f"Removed codes: {codes_format(product_codes)}")
-    lprint(ctx, f'Removed codes: {codes_format(product_codes)}')
+    await ctx.send(f"Deleted codes: {codes_format(product_codes)}")
+    lprint(ctx, f'Deleted codes: {codes_format(product_codes)}')
 
 @bot.command(aliases=['clear', 'cc'])
 async def codeclear(ctx, *args):
@@ -529,7 +551,7 @@ async def boxphotoonly(ctx, *product_codes):
     for filename in files:
         try: file = discord.File(f"{box_photos_path}/{filename}", filename=f"{filename}")
         except: pass
-        else: await ctx.send(f'{filename[:-4]}', file=file)
+        else: await ctx.send(f'{filename.split(".")[0]}', file=file)
 
     # Prints out codes that had no corresponding images.
     if no_matches: await ctx.send(f"No images for: {codes_format(no_matches)}")
@@ -560,8 +582,9 @@ async def boxphotoupload(ctx, product_code):
     # Rescales photo by 50%.
     image_rescale.rescale(file_path, 50)
 
-    await ctx.send(f"New upload: {new_filename}")
-    await send_log(f"New Box Image: {product_code}")
+    text = f"New image: {new_filename.split('.')[0]}"
+    await ctx.send(text)
+    await send_log(text)
     lprint(ctx, f"New box photo: {new_filename}")
 
     # Gets product code name
@@ -569,8 +592,6 @@ async def boxphotoupload(ctx, product_code):
     if result:
         result = result[0].split(' ')
         await ctx.send(f"**{result[0]}:** {' '.join(result[1:])}\n")
-
-    await ctx.invoke(bot.get_command("boxphotoonly"), product_code)
 
 @bot.command(aliases=['boxrename', 'br', 'rename'])
 async def boxphotorename(ctx, product_codes, new_code):
@@ -581,8 +602,9 @@ async def boxphotorename(ctx, product_codes, new_code):
     except:
         await ctx.send("Error renaming photo.")
         return
-    await ctx.send(f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
-    await send_log(f"Box Image Renamed: {product_codes}.jpg > {new_code}.jpg")
+    text = f"Image renamed: {product_codes}.jpg > {new_code}.jpg"
+    await ctx.send(text)
+    await send_log(text)
     lprint(ctx, f"Image Renamed: {product_codes}.jpg > {new_code}.jpg")
 
 @bot.command(aliases=['bd', 'bpd'])
@@ -593,8 +615,9 @@ async def boxphotodelete(ctx, photo_name):
     try: os.rename(f"{box_photos_path}/{photo_name}.jpg", f"{box_photos_deleted_path}/{photo_name}.jpg")
     except: await ctx.send(f"Error deleting or file not exist: {photo_name}")
     else:
-        await ctx.send(f"Deleted: {photo_name}")
-        await send_log(f"Deleted Box Image: {photo_name}")
+        text = f"Deleted image: {photo_name}"
+        await ctx.send(text)
+        await send_log(text)
         lprint(ctx, f"Deleted: {photo_name}")
 
 @bot.command(hidden=True, aliases=['pd'])
@@ -629,12 +652,13 @@ async def commands(ctx, *args):
 
     commands = [
     ['Recommend using bot in Direct Messages', 'Use `dm` command to have bot send you a private message.', 'So no confusion/conflicts when multiple people are using the bot. (Unless you want to share with the class, feel free too)'],
-    ['Saving product codes', 'Save/remove codes with `add`/`remove` commands. Use `codes` to see all saved codes (in groups of 5).', '`a 7221` (Save code), `r c 1` (Remove group 1 codes), `c 1` (Show group 1)'],
+    ['Saving product codes', 'Save/delete codes with `add`/`delete` commands. Use `codes` to see all saved codes (in groups of 5).', '`a 7221` (Save code), `d c 1` (Deletes group 1 codes), `c 1` (Show group 1)'],
     ['Using saved codes for commands', 'Some commands can use saved codes (or a group).', '`i c` (Get info for all saved codes), `b c 1` (Get info + box photo for group 1)'],
     ['Shortcut, Command', 'Description.', 'Usage examples'],
     ['q, query, search', 'Search product by keyword or code, return list of best matches', '`q 6509`, `q new amsterdam watermelon`'],
     ['c, codes', 'Show current codes saved.', '`c`, `c 1`'],
-    ['a, add / r, remove / cc, clear', 'Add/remove/clear saved codes.', '`a 7221 6214`, `r c 1`, `cc`'],
+    ['a, add / d, delete / cc, clear', 'Add/delete/clear saved codes.', '`a 7221 6214`, `d c 1`, `cc`'],
+    ['d, reset', 'Resets shelved/found status for codes.', '`r 7221`, `r c 1` (resets group 1 codes), `r` (resets all)'],
     ['m, match', 'Check if in saved codes.', '`m 7221 6660`'],
     ['i, info, inventory', 'Show inventory info for codes (name, how many on-hand, etc).', '`i 7221 6660`, `i c`'],
     ['f, found & s, shelved', 'Update box status (found box, shelved product).', '`f 7221`, `s 7221 6660`, `s c 1`'],
