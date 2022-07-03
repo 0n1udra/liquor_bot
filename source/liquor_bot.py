@@ -296,8 +296,6 @@ async def liquorfetch(ctx, *product_codes):
 async def liquorquery(ctx, *keywords):
     """Returns search results for product by keyword or code."""
 
-    try: amount = int(keywords[0])
-    except: amount = 25
     await ctx.send(f"***Searching:*** *{' '.join(keywords)}*")
     results = (liquor_search(' '.join(keywords)))
     if not results:
@@ -305,7 +303,7 @@ async def liquorquery(ctx, *keywords):
         return
 
     results = ''
-    for i in liquor_search(' '.join(keywords)[:amount]):
+    for i in liquor_search(' '.join(keywords)[:15]):
         i = i.split(' ')
         results += f"**{i[0]}:** {' '.join(i[1:])}\n"
 
