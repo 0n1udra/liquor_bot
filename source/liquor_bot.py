@@ -32,7 +32,7 @@ else:
 data_points = ['Name', 'Details', 'Code', 'Pack', 'Inventory', 'Ordered', 'QueryText']
 data_dict = {k:'N/A' for k in data_points}
 # No Entry: Not exist | X: Exists but not on-hand | Check mark: On hand | F: Box found | S: Shelved
-data_dict.update({'Icon': ':question:', 'Status': '', 'Image': 'Not Found'})
+data_dict.update({'Icon': ':question:', 'Status': 'N/A', 'Image': 'Not Found'})
 user_liquor_data = {'test_user': {'7777777': data_dict}}  # Keep track of status of product found or shelved.
 user_liquor_codes = {'test_user': ['7777777']}  # Each user gets own list of saved codes
 
@@ -432,7 +432,7 @@ async def codeadd(ctx, *product_codes):
         return
 
     # Updates user_liquor_data with data form web scraper
-    uld_update(user, product_codes)
+    uld_populate(user, product_codes)
 
     await ctx.invoke(bot.get_command("codeget"))
     lprint(ctx, f"Code added: {codes_format(product_codes)}")
