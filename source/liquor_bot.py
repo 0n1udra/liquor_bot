@@ -303,11 +303,17 @@ async def liquorquery(ctx, *keywords):
         return
 
     results = ''
-    for i in liquor_search(' '.join(keywords)[:15]):
+    count = 0
+    limit = 15
+    for i in liquor_search(' '.join(keywords)):
         i = i.split(' ')
-        results += f"**{i[0]}:** {' '.join(i[1:])}\n"
+        if count <= limit:
+            results += f"**{i[0]}:** {' '.join(i[1:])}\n"
+        count += 1
 
     await ctx.send(results)
+    if count > limit:
+        await ctx.send(f"Can only show 15 results. Total Found **{count}**. If not in shown results, try being more specific.")
     lprint(ctx, f"Queried: {codes_format(keywords)}")
 
 # ===== Box Status
