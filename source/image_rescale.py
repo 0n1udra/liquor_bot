@@ -24,5 +24,5 @@ if '__main__' == __name__:
         if '-b' in sys.argv: x = 1
         rescale(sys.argv[1+x], sys.argv[2+x], batch=x)
 
-    else: print("Usage: python3 [-b] input.jpg 75 (Percentage)")
+    else: print("Usage: python3 [-b] input.jpg/dir 75 (Percentage)")
 

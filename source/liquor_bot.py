@@ -302,9 +302,7 @@ async def liquorquery(ctx, *keywords):
         await ctx.send("No results found.")
         return
 
-    results = ''
-    count = 0
-    limit = 15
+    results, count, limit = '', 0, 15
     for i in liquor_search(' '.join(keywords)):
         i = i.split(' ')
         if count < limit:
