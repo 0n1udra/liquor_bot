@@ -16,7 +16,6 @@ bot_path = os.path.dirname(os.path.abspath(__file__))
 bot_log_file = bot_path + '/liquor_log.txt'
 box_photos_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes'
 box_photos_deleted_path = f'/home/{os.getlogin()}/Pictures/liquor_boxes_deleted'  # Where to move deleted photos
-log_channel_id = 991448938399928421
 admin_channel_id = 991450998847578224
 ctx = "liquor_bot.py"  # For logging
 # Depending on which git branch. Beta bot gets prefix.
@@ -241,7 +240,7 @@ bot = ComponentsBot(command_prefix=cmd_prefix, case_insensitive=True, help_comma
 async def send_log(msg):
     """Send message to bot log channel."""
 
-    bot_channel = bot.get_channel(log_channel_id)
+    bot_channel = bot.get_channel(admin_channel_id)
     try: await bot_channel.send(msg)
     except: pass
 
