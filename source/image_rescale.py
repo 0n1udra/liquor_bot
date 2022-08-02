@@ -20,7 +20,7 @@ def rescale(image, percentage, batch=0):
 if '__main__' == __name__:
     x = 0
 
-    if len(sys.argv) == 4:
+    if len(sys.argv) >= 3:
         if '-b' in sys.argv: x = 1
         rescale(sys.argv[1+x], sys.argv[2+x], batch=x)
 
